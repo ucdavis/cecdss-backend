@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "Program to integrate processed F3 data with FRCS, TEA",
   "main": "index.js",
+  "repository": "hsttps://github.com/ucdavis/cecdss-backend.git",
+  "author": "Laura Holstege <laholstege@ucdavis.edu>",
+  "license": "MIT",
+  "private": false,
   "scripts": {
     "prebuild": "tslint -c tslint.json -p tsconfig.json",
     "build": "tsc",
@@ -11,16 +15,6 @@
     "start": "node ./index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ucdavis/cecdss-backend.git"
-  },
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/ucdavis/cecdss-backend/issues"
-  },
-  "homepage": "https://github.com/ucdavis/cecdss-backend#readme",
   "dependencies": {
     "@ucdavis/frcs": "^1.0.6",
     "body-parser": "^1.19.0",
