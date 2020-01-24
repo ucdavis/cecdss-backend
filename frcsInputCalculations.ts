@@ -1,7 +1,7 @@
 import { InputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
 import { TreatedCluster } from './models/treatedcluster';
 
-export const metersToAcresConstant = 0.00024711;
+export const metersToAcresConstant = 0.000247105;
 export const pixelAreaInAcres = 30 * 30 * metersToAcresConstant;
 
 // these equations come from this sheet:
