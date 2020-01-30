@@ -2,11 +2,14 @@ import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import express from 'express';
-import { getBoundsOfDistance } from 'geolib';
+import { getBoundsOfDistance, getDistance } from 'geolib';
 import knex from 'knex';
+import pg from 'pg';
 import { TreatedCluster } from './models/treatedcluster';
 import { runFrcsOnCluster } from './runFrcs';
 
+const PG_DECIMAL_OID = 1700;
+pg.types.setTypeParser(PG_DECIMAL_OID, parseFloat);
 dotenv.config();
 
 const app = express();
@@ -17,7 +20,7 @@ const port = process.env.PORT || 3000;
 
 console.log('connecting to db', process.env.DB_HOST);
 // https://knexjs.org/
-const pg = knex({
+const db = knex({
   client: 'pg',
   connection: {
     host: process.env.DB_HOST,
@@ -33,7 +36,15 @@ interface RequestParams {
   radius: number;
 }
 
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  next();
+});
+
 app.post('/process', async (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
   const params: RequestParams = req.body;
   console.log('PARAMS');
   console.log(params);
@@ -41,30 +52,27 @@ app.post('/process', async (req, res) => {
     { latitude: params.lat, longitude: params.lng },
     params.radius
   );
-  console.log('BOUNDS:');
-  console.log(bounds);
+
   try {
-    const clusters: TreatedCluster[] = await pg
+    const clusters: TreatedCluster[] = await db
       .table('treatedclusters')
-      .whereBetween('center_lat', [bounds[0].latitude, bounds[1].latitude])
-      .andWhereBetween('center_lng', [bounds[0].longitude, bounds[1].longitude]);
-    // console.log('CLUSTERS: ' + clusters.length);
-    console.log(clusters[1]);
-    const results = await runFrcsOnCluster(clusters[1]);
-    // const results = clusters.map(async cluster => {
-    //   try {
-    //     const result = await runFrcsOnCluster(cluster);
-    //     console.log('RESULT: ');
-    //     console.log(result);
-    //     return result;
-    //   } catch (err) {
-    //     console.log('ERROR:');
-    //     console.log(err);
-    //     return {};
-    //   }
-    // });
-    console.log('RESULTS: ');
-    console.log(results);
+      .whereBetween('landing_lat', [bounds[0].latitude, bounds[1].latitude])
+      .andWhereBetween('landing_lng', [bounds[0].longitude, bounds[1].longitude]);
+    const results: any[] = [];
+    results.push({ totalClusters: clusters.length });
+    for (const cluster of clusters) {
+      try {
+        const result = await runFrcsOnCluster(cluster);
+        const distance = getDistance(
+          { latitude: params.lat, longitude: params.lng },
+          { latitude: cluster.landing_lat, longitude: cluster.landing_lng }
+        );
+        results.push({ cluster: cluster, frcsOutput: result, distance: distance });
+      } catch (err) {
+        // swallow errors frcs throws and push the error message instead
+        results.push({ cluster: cluster, frcsOutput: err.message });
+      }
+    }
     res.status(200).json(results);
   } catch (e) {
     res.status(400).send(e.message);

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Program to integrate processed F3 data with FRCS, TEA",
   "main": "index.js",
-  "repository": "hsttps://github.com/ucdavis/cecdss-backend.git",
+  "repository": "https://github.com/ucdavis/cecdss-backend.git",
   "author": "Laura Holstege <laholstege@ucdavis.edu>",
   "license": "MIT",
   "private": false,
