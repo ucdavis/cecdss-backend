@@ -55,6 +55,8 @@ app.post('/process', async (req, res) => {
     const results: Results = {
       numberOfClusters: clusters.length,
       totalBiomass: 0,
+      totalArea: 0,
+      totalCost: 0,
       clusters: []
     };
     for (const cluster of clusters) {
@@ -66,9 +68,13 @@ app.post('/process', async (req, res) => {
       try {
         const result: OutputVarMod = await runFrcsOnCluster(cluster);
         results.totalBiomass += clusterBiomass;
+        results.totalArea += cluster.area;
+        results.totalCost += result.TotalPerAcre * cluster.area;
         results.clusters.push({
           cluster_no: cluster.cluster_no,
-          totalBiomass: clusterBiomass,
+          area: cluster.area,
+          cost: result.TotalPerAcre * cluster.area,
+          biomass: clusterBiomass,
           distance: distance,
           frcsResult: result
         });
@@ -76,7 +82,9 @@ app.post('/process', async (req, res) => {
         // swallow errors frcs throws and push the error message instead
         results.clusters.push({
           cluster_no: cluster.cluster_no,
-          totalBiomass: clusterBiomass,
+          area: cluster.area,
+          biomass: clusterBiomass,
+          cost: 0,
           distance: distance,
           frcsResult: err.message
         });

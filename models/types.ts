@@ -8,13 +8,17 @@ export interface RequestParams {
 
 export interface Results {
   totalBiomass: number;
+  totalArea: number;
+  totalCost: number;
   numberOfClusters: number;
   clusters: ClusterResult[];
 }
 
 export interface ClusterResult {
   cluster_no: number;
-  totalBiomass: number;
+  biomass: number;
+  cost: number;
+  area: number;
   distance: number;
   frcsResult: OutputVarMod;
 }
