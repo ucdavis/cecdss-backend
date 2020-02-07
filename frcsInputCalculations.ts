@@ -7,7 +7,7 @@ export const pixelAreaInAcres = 30 * 30 * metersToAcresConstant;
 // these equations come from this sheet:
 // https://ucdavis.app.box.com/file/566320916282
 
-export const getFrcsInputs = (cluster: TreatedCluster) => {
+export const getFrcsInputs = (cluster: TreatedCluster, system: string) => {
   const weightCT = calcWeightCT(cluster);
   const volumeCT = calcVolumeCT(cluster);
   const removalsCT = calcRemovalsCT(cluster);
@@ -24,7 +24,7 @@ export const getFrcsInputs = (cluster: TreatedCluster) => {
   const totalRemovalsLLT = calcTotalRemovalsLLT(cluster);
 
   const frcsInputs: InputVarMod = {
-    System: 'Ground-Based Mech WT',
+    System: system,
     PartialCut: true,
     DeliverDist: cluster.total_yarding,
     Slope: cluster.slope,
@@ -32,6 +32,7 @@ export const getFrcsInputs = (cluster: TreatedCluster) => {
     CalcLoad: true,
     CalcMoveIn: true,
     Area: cluster.area,
+    // TODO: algorithm to calculate this
     MoveInDist: 2,
     CalcResidues: true,
     UserSpecWDCT: weightCT / volumeCT,
@@ -49,6 +50,7 @@ export const getFrcsInputs = (cluster: TreatedCluster) => {
     TreeVolCT: volumeCT / totalRemovalsCT,
     TreeVolSLT: volumeSLT / totalRemovalsSLT,
     TreeVolLLT: volumeLLT / totalRemovalsLLT,
+    // TODO: pull from user input
     DieselFuelPrice: 3.882
   };
   return frcsInputs;

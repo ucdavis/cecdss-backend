@@ -1,4 +1,5 @@
 import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
+import { genericPowerOnly } from '@ucdavis/tea';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import express from 'express';
@@ -6,8 +7,9 @@ import { getBoundsOfDistance, getDistance } from 'geolib';
 import knex from 'knex';
 import pg from 'pg';
 import { TreatedCluster } from './models/treatedcluster';
-import { RequestParams, Results } from './models/types';
+import { ClusterRequestParams, RequestParams, Results } from './models/types';
 import { runFrcsOnCluster } from './runFrcs';
+import { getTransportationCost } from './transportation';
 
 const PG_DECIMAL_OID = 1700;
 pg.types.setTypeParser(PG_DECIMAL_OID, parseFloat);
@@ -27,7 +29,7 @@ const db = knex({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASS,
-    database: 'plumas-kmeans'
+    database: process.env.DB_NAME
   }
 });
 
@@ -38,10 +40,92 @@ app.use((req, res, next) => {
   next();
 });
 
+app.post('/processCluster', async (req, res) => {
+  const params: ClusterRequestParams = req.body;
+  console.log('PARAMS');
+  console.log(params);
+  const systems = [
+    'Ground-Based Mech WT',
+    'Ground-Based Manual WT',
+    'Ground-Based Manual Log',
+    'Ground-Based CTL',
+    'Cable Manual WT/Log',
+    'Cable Manual WT',
+    'Cable Manual Log',
+    'Cable CTL',
+    'Helicopter Manual WT',
+    'Helicopter CTL'
+  ];
+  if (!systems.some(x => x === params.system)) {
+    res.status(400).send('System not recognized');
+  }
+
+  try {
+    const clusters: TreatedCluster[] = await db
+      .table('treatedclusters')
+      .where({ cluster_no: params.clusterId });
+    const cluster = clusters[0];
+    const results: Results = {
+      numberOfClusters: clusters.length,
+      totalBiomass: 0,
+      totalArea: 0,
+      totalCost: 0,
+      clusters: []
+    };
+    const clusterBiomass = sumBiomass(cluster);
+    try {
+      const result: OutputVarMod = await runFrcsOnCluster(cluster, params.system);
+
+      results.totalBiomass += clusterBiomass;
+      results.totalArea += cluster.area;
+      results.totalCost += result.TotalPerAcre * cluster.area;
+      results.clusters.push({
+        cluster_no: cluster.cluster_no,
+        area: cluster.area,
+        cost: result.TotalPerAcre * cluster.area,
+        biomass: clusterBiomass,
+        distance: 0,
+        transportationCost: 0,
+        frcsResult: result
+      });
+    } catch (err) {
+      // swallow errors frcs throws and push the error message instead
+      results.clusters.push({
+        cluster_no: cluster.cluster_no,
+        area: cluster.area,
+        biomass: clusterBiomass,
+        cost: 0,
+        distance: 0,
+        transportationCost: 0,
+        frcsResult: err.message
+      });
+    }
+    console.log(results);
+    res.status(200).json(results);
+  } catch (e) {
+    res.status(400).send(e.message);
+  }
+});
+
 app.post('/process', async (req, res) => {
   const params: RequestParams = req.body;
   console.log('PARAMS');
   console.log(params);
+  const systems = [
+    'Ground-Based Mech WT',
+    'Ground-Based Manual WT',
+    'Ground-Based Manual Log',
+    'Ground-Based CTL',
+    'Cable Manual WT/Log',
+    'Cable Manual WT',
+    'Cable Manual Log',
+    'Cable CTL',
+    'Helicopter Manual WT',
+    'Helicopter CTL'
+  ];
+  if (!systems.some(x => x === params.system)) {
+    res.status(400).send('System not recognized');
+  }
   const bounds = getBoundsOfDistance(
     { latitude: params.lat, longitude: params.lng },
     params.radius
@@ -64,9 +148,10 @@ app.post('/process', async (req, res) => {
         { latitude: params.lat, longitude: params.lng },
         { latitude: cluster.landing_lat, longitude: cluster.landing_lng }
       );
+      const transportationCostPerGT = getTransportationCost(distance);
       const clusterBiomass = sumBiomass(cluster);
       try {
-        const result: OutputVarMod = await runFrcsOnCluster(cluster);
+        const result: OutputVarMod = await runFrcsOnCluster(cluster, params.system);
         results.totalBiomass += clusterBiomass;
         results.totalArea += cluster.area;
         results.totalCost += result.TotalPerAcre * cluster.area;
@@ -76,6 +161,7 @@ app.post('/process', async (req, res) => {
           cost: result.TotalPerAcre * cluster.area,
           biomass: clusterBiomass,
           distance: distance,
+          transportationCost: transportationCostPerGT,
           frcsResult: result
         });
       } catch (err) {
@@ -86,10 +172,12 @@ app.post('/process', async (req, res) => {
           biomass: clusterBiomass,
           cost: 0,
           distance: distance,
+          transportationCost: 0,
           frcsResult: err.message
         });
       }
     }
+    console.log(results);
     res.status(200).json(results);
   } catch (e) {
     res.status(400).send(e.message);

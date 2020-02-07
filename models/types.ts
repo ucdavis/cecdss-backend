@@ -4,6 +4,12 @@ export interface RequestParams {
   lat: number;
   lng: number;
   radius: number;
+  system: string;
+}
+
+export interface ClusterRequestParams {
+  clusterId: number;
+  system: string;
 }
 
 export interface Results {
@@ -20,5 +26,6 @@ export interface ClusterResult {
   cost: number;
   area: number;
   distance: number;
+  transportationCost: number;
   frcsResult: OutputVarMod;
 }
