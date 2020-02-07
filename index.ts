@@ -34,12 +34,12 @@ const db = knex({
   }
 });
 
-// allow cors for local dev
-// app.use((req, res, next) => {
-//   res.header('Access-Control-Allow-Origin', '*');
-//   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-//   next();
-// });
+// allow cors
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'https://cecdss.azurewebsites.net/');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  next();
+});
 
 app.post('/processCluster', async (req, res) => {
   const params: ClusterRequestParams = req.body;
