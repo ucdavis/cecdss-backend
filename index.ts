@@ -71,7 +71,8 @@ app.post('/processCluster', async (req, res) => {
       totalBiomass: 0,
       totalArea: 0,
       totalCost: 0,
-      clusters: []
+      clusters: [],
+      skippedClusters: []
     };
     const clusterBiomass = sumBiomass(cluster);
     try {
@@ -91,7 +92,7 @@ app.post('/processCluster', async (req, res) => {
       });
     } catch (err) {
       // swallow errors frcs throws and push the error message instead
-      results.clusters.push({
+      results.skippedClusters.push({
         cluster_no: cluster.cluster_no,
         area: cluster.area,
         biomass: clusterBiomass,
@@ -142,7 +143,8 @@ app.post('/process', async (req, res) => {
       totalBiomass: 0,
       totalArea: 0,
       totalCost: 0,
-      clusters: []
+      clusters: [],
+      skippedClusters: []
     };
     for (const cluster of clusters) {
       const distance = getDistance(
@@ -167,7 +169,7 @@ app.post('/process', async (req, res) => {
         });
       } catch (err) {
         // swallow errors frcs throws and push the error message instead
-        results.clusters.push({
+        results.skippedClusters.push({
           cluster_no: cluster.cluster_no,
           area: cluster.area,
           biomass: clusterBiomass,

@@ -18,6 +18,7 @@ export interface Results {
   totalCost: number;
   numberOfClusters: number;
   clusters: ClusterResult[];
+  skippedClusters: ClusterResult[];
 }
 
 export interface ClusterResult {
