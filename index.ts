@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import { getBoundsOfDistance, getDistance } from 'geolib';
 import knex from 'knex';
+import OSRM from 'osrm';
 import pg from 'pg';
 import { TreatedCluster } from './models/treatedcluster';
 import { ClusterRequestParams, RequestParams, Results } from './models/types';
@@ -33,6 +34,8 @@ const db = knex({
     port: Number(process.env.DB_PORT)
   }
 });
+
+const osrm = new OSRM('./data/california-latest.osrm');
 
 // allow cors
 app.use((req, res, next) => {
@@ -76,7 +79,7 @@ app.post('/processCluster', async (req, res) => {
     };
     const clusterBiomass = sumBiomass(cluster);
     try {
-      const result: OutputVarMod = await runFrcsOnCluster(cluster, params.system);
+      const result: OutputVarMod = await runFrcsOnCluster(cluster, params.system, 2);
 
       results.totalBiomass += clusterBiomass;
       results.totalArea += cluster.area;
@@ -147,25 +150,42 @@ app.post('/process', async (req, res) => {
       skippedClusters: []
     };
     for (const cluster of clusters) {
-      const distance = getDistance(
-        { latitude: params.lat, longitude: params.lng },
-        { latitude: cluster.landing_lat, longitude: cluster.landing_lng }
+      // const distance = getDistance(
+      //   { latitude: params.lat, longitude: params.lng },
+      //   { latitude: cluster.landing_lat, longitude: cluster.landing_lng }
+      // );
+      const routeOptions: OSRM.RouteOptions = {
+        coordinates: [
+          [params.lng, params.lat],
+          [cluster.landing_lng, cluster.landing_lat]
+        ],
+        annotations: ['duration', 'distance']
+      };
+      const route: any = await getRouteDistanceAndDuration(routeOptions);
+      console.log(
+        `cluster: ${cluster.cluster_no} duration: ${route.duration} distance: ${
+          route.distance
+        }(m) ${route.distance * 0.00062137} (mi)`
       );
-      const transportationCostPerGT = getTransportationCost(distance);
+      const transportationCostPerGT = getTransportationCost(route.distance, route.duration);
       const clusterBiomass = sumBiomass(cluster);
       try {
-        const result: OutputVarMod = await runFrcsOnCluster(cluster, params.system);
+        const frcsResult: OutputVarMod = await runFrcsOnCluster(
+          cluster,
+          params.system,
+          route.distance * 0.00062137
+        );
         results.totalBiomass += clusterBiomass;
         results.totalArea += cluster.area;
-        results.totalCost += result.TotalPerAcre * cluster.area;
+        results.totalCost += frcsResult.TotalPerAcre * cluster.area;
         results.clusters.push({
           cluster_no: cluster.cluster_no,
           area: cluster.area,
-          cost: result.TotalPerAcre * cluster.area,
+          cost: frcsResult.TotalPerAcre * cluster.area,
           biomass: clusterBiomass,
-          distance: distance,
+          distance: route.distance,
           transportationCost: transportationCostPerGT,
-          frcsResult: result
+          frcsResult: frcsResult
         });
       } catch (err) {
         // swallow errors frcs throws and push the error message instead
@@ -174,7 +194,7 @@ app.post('/process', async (req, res) => {
           area: cluster.area,
           biomass: clusterBiomass,
           cost: 0,
-          distance: distance,
+          distance: route.distance,
           transportationCost: 0,
           frcsResult: err.message
         });
@@ -186,6 +206,21 @@ app.post('/process', async (req, res) => {
     res.status(400).send(e.message);
   }
 });
+
+const getRouteDistanceAndDuration = (routeOptions: OSRM.RouteOptions) => {
+  return new Promise((resolve, reject) => {
+    osrm.route(routeOptions, async (err, result) => {
+      if (err) {
+        reject(err);
+      }
+      console.log(result.waypoints);
+      console.log(result.routes);
+      const distance = result.routes[0].distance;
+      const duration = result.routes[0].duration;
+      resolve({ distance, duration });
+    });
+  });
+};
 
 export const sumBiomass = (cluster: TreatedCluster) => {
   return (

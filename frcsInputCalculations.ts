@@ -7,7 +7,7 @@ export const pixelAreaInAcres = 30 * 30 * metersToAcresConstant;
 // these equations come from this sheet:
 // https://ucdavis.app.box.com/file/566320916282
 
-export const getFrcsInputs = (cluster: TreatedCluster, system: string) => {
+export const getFrcsInputs = (cluster: TreatedCluster, system: string, distance: number) => {
   const weightCT = calcWeightCT(cluster);
   const volumeCT = calcVolumeCT(cluster);
   const removalsCT = calcRemovalsCT(cluster);
@@ -33,7 +33,7 @@ export const getFrcsInputs = (cluster: TreatedCluster, system: string) => {
     CalcMoveIn: true,
     Area: cluster.area,
     // TODO: algorithm to calculate this
-    MoveInDist: 2,
+    MoveInDist: distance,
     CalcResidues: true,
     UserSpecWDCT: weightCT / volumeCT,
     UserSpecWDSLT: weightSLT / volumeSLT,

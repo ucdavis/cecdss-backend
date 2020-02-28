@@ -14,7 +14,7 @@ const getTonsPerTruck = (material?: string) => {
   return 18.5;
 };
 
-export const getTransportationCost = (distance: number) => {
+export const getTransportationCost = (distance: number, duration: number) => {
   //   const transportation = get(feature.properties.id);
 
   //   if (transportation.error) {
@@ -26,7 +26,7 @@ export const getTransportationCost = (distance: number) => {
   const miles = distance * KM_TO_MILES;
 
   // TODO: get from osrm
-  const hours = 2; // transportation.duration;
+  const hours = duration;
 
   /*
 
