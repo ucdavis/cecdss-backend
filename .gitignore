@@ -63,3 +63,5 @@ typings/
 # compiled JS
 *.js
 *.map
+
+data/
