@@ -79,7 +79,7 @@ app.post('/processCluster', async (req, res) => {
     };
     const clusterBiomass = sumBiomass(cluster);
     try {
-      const result: OutputVarMod = await runFrcsOnCluster(cluster, params.system);
+      const result: OutputVarMod = await runFrcsOnCluster(cluster, params.system, 2);
 
       results.totalBiomass += clusterBiomass;
       results.totalArea += cluster.area;
@@ -162,13 +162,19 @@ app.post('/process', async (req, res) => {
         annotations: ['duration', 'distance']
       };
       const route: any = await getRouteDistanceAndDuration(routeOptions);
-      // console.log(
-      //   `cluster: ${cluster.cluster_no} duration: ${route.duration} distance: ${route.distance}`
-      // );
+      console.log(
+        `cluster: ${cluster.cluster_no} duration: ${route.duration} distance: ${
+          route.distance
+        }(m) ${route.distance * 0.00062137} (mi)`
+      );
       const transportationCostPerGT = getTransportationCost(route.distance, route.duration);
       const clusterBiomass = sumBiomass(cluster);
       try {
-        const frcsResult: OutputVarMod = await runFrcsOnCluster(cluster, params.system);
+        const frcsResult: OutputVarMod = await runFrcsOnCluster(
+          cluster,
+          params.system,
+          route.distance * 0.00062137
+        );
         results.totalBiomass += clusterBiomass;
         results.totalArea += cluster.area;
         results.totalCost += frcsResult.TotalPerAcre * cluster.area;
