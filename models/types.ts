@@ -24,9 +24,10 @@ export interface Results {
 export interface ClusterResult {
   cluster_no: number;
   biomass: number;
-  cost: number;
+  totalCost: number;
   area: number;
   distance: number;
+  harvestCost: number;
   transportationCost: number;
   frcsResult: OutputVarMod;
 }
