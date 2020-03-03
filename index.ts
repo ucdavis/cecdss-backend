@@ -65,8 +65,9 @@ app.post('/process', async (req, res) => {
     res.status(400).send('System not recognized');
   }
 
-  // const teaOutput: OutputModGPO = genericPowerOnly(params.technoEconomicInputs);
-  const biomassTarget = 30000; // teaOutput.ElectricalAndFuelBaseYear.AnnualFuelConsumption; // dry metric tons / year
+  const teaOutput: OutputModGPO = genericPowerOnly(params.teaInputs);
+  const biomassTarget = teaOutput.ElectricalAndFuelBaseYear.AnnualFuelConsumption; // dry metric tons / year
+  console.log('BIOMASS TARGET: ' + biomassTarget);
 
   const bounds = getBoundsOfDistance(
     { latitude: params.lat, longitude: params.lng },
@@ -79,6 +80,7 @@ app.post('/process', async (req, res) => {
       .whereBetween('landing_lat', [bounds[0].latitude, bounds[1].latitude])
       .andWhereBetween('landing_lng', [bounds[0].longitude, bounds[1].longitude]);
     const results: Results = {
+      teaResults: teaOutput,
       numberOfClusters: 0,
       totalBiomass: 0,
       totalArea: 0,

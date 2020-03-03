@@ -1,10 +1,13 @@
 import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
+import { OutputModGPO } from '@ucdavis/tea/out/models/output.model';
+import { GenericPowerOnlyInputMod } from './TechnoeconomicInputs';
 
 export interface RequestParams {
   lat: number;
   lng: number;
   radius: number;
   system: string;
+  teaInputs: GenericPowerOnlyInputMod;
 }
 
 export interface ClusterRequestParams {
@@ -13,6 +16,7 @@ export interface ClusterRequestParams {
 }
 
 export interface Results {
+  teaResults: OutputModGPO;
   totalBiomass: number;
   totalArea: number;
   totalCost: number;
