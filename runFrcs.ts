@@ -10,8 +10,6 @@ export const runFrcsOnCluster = async (
   distance: number
 ) => {
   const frcsInputs = getFrcsInputs(cluster, system, distance);
-  console.log('frcsInputs: ');
-  console.log(frcsInputs);
   const clusterFrcsOutput = runFrcs(frcsInputs);
   return clusterFrcsOutput;
 };

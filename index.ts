@@ -47,8 +47,6 @@ app.use((req, res, next) => {
 
 app.post('/process', async (req, res) => {
   const params: RequestParams = req.body;
-  console.log('PARAMS');
-  console.log(params);
   const systems = [
     'Ground-Based Mech WT',
     'Ground-Based Manual WT',
@@ -67,7 +65,6 @@ app.post('/process', async (req, res) => {
 
   const teaOutput: OutputModGPO = genericPowerOnly(params.teaInputs);
   const biomassTarget = teaOutput.ElectricalAndFuelBaseYear.AnnualFuelConsumption; // dry metric tons / year
-  console.log('BIOMASS TARGET: ' + biomassTarget);
 
   const bounds = getBoundsOfDistance(
     { latitude: params.lat, longitude: params.lng },
@@ -101,11 +98,6 @@ app.post('/process', async (req, res) => {
         annotations: ['duration', 'distance']
       };
       const route: any = await getRouteDistanceAndDuration(routeOptions);
-      console.log(
-        `cluster: ${cluster.cluster_no} duration: ${route.duration} distance: ${
-          route.distance
-        }(m) ${route.distance * 0.00062137} (mi)`
-      );
       const transportationCostPerGT = getTransportationCost(route.distance, route.duration);
       const clusterBiomass = sumBiomass(cluster);
       try {
@@ -142,16 +134,12 @@ app.post('/process', async (req, res) => {
     clusterCosts.sort((a, b) => {
       return a.totalCost / a.biomass - b.totalCost / b.biomass;
     });
-    console.log('sorted array');
-    console.log(clusterCosts);
 
     for (const cluster of clusterCosts) {
       if (results.totalBiomass >= biomassTarget) {
-        console.log('target biomass hit!');
         results.skippedClusters.push(cluster); // keeping for testing for now
         // break
       } else {
-        console.log('after break: ' + cluster.cluster_no);
         results.totalBiomass += cluster.biomass;
         results.totalArea += cluster.area;
         results.totalCost += cluster.totalCost;
@@ -159,7 +147,6 @@ app.post('/process', async (req, res) => {
       }
     }
     results.numberOfClusters = results.clusters.length;
-    console.log(results);
     res.status(200).json(results);
   } catch (e) {
     res.status(400).send(e.message);
@@ -172,8 +159,6 @@ const getRouteDistanceAndDuration = (routeOptions: OSRM.RouteOptions) => {
       if (err) {
         reject(err);
       }
-      console.log(result.waypoints);
-      console.log(result.routes);
       const distance = result.routes[0].distance;
       const duration = result.routes[0].duration;
       resolve({ distance, duration });
