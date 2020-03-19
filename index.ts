@@ -83,7 +83,8 @@ app.post('/process', async (req, res) => {
       totalArea: 0,
       totalCost: 0,
       clusters: [],
-      skippedClusters: []
+      skippedClusters: [],
+      errorClusters: []
     };
 
     const clusterCosts: ClusterResult[] = [];
@@ -98,36 +99,37 @@ app.post('/process', async (req, res) => {
         annotations: ['duration', 'distance']
       };
       const route: any = await getRouteDistanceAndDuration(routeOptions);
-      const transportationCostPerGT = getTransportationCost(route.distance, route.duration);
+      const distance = route.distance * 1000; // m to km
+      const duration = route.duration / 3600; // seconds to hours
+      const transportationCostPerGT = getTransportationCost(distance, duration);
       const clusterBiomass = sumBiomass(cluster);
+      const transportationCostTotal = transportationCostPerGT * clusterBiomass;
       try {
         const frcsResult: OutputVarMod = await runFrcsOnCluster(
           cluster,
           params.system,
-          route.distance * 0.00062137
+          distance * 0.621371 // move in distance km to miles
         );
 
         clusterCosts.push({
           cluster_no: cluster.cluster_no,
           area: cluster.area,
-          totalCost: frcsResult.TotalPerAcre * cluster.area + transportationCostPerGT,
+          totalCost: frcsResult.Residue.ResiduePerAcre * cluster.area + transportationCostTotal,
           biomass: clusterBiomass,
-          distance: route.distance,
-          harvestCost: frcsResult.TotalPerAcre * cluster.area,
-          transportationCost: transportationCostPerGT,
-          frcsResult: frcsResult
+          distance: distance,
+          harvestCost: frcsResult.Residue.ResiduePerAcre * cluster.area,
+          transportationCost: transportationCostTotal,
+          frcsResult: frcsResult,
+          lat: cluster.landing_lat,
+          lng: cluster.landing_lng
         });
       } catch (err) {
         // swallow errors frcs throws and push the error message instead
-        results.skippedClusters.push({
+        results.errorClusters.push({
           cluster_no: cluster.cluster_no,
           area: cluster.area,
-          totalCost: 0,
           biomass: clusterBiomass,
-          distance: route.distance,
-          harvestCost: 0,
-          transportationCost: 0,
-          frcsResult: err.message
+          error: err.message
         });
       }
     }
@@ -135,18 +137,36 @@ app.post('/process', async (req, res) => {
       return a.totalCost / a.biomass - b.totalCost / b.biomass;
     });
 
+    console.log('clusters processed: ');
     for (const cluster of clusterCosts) {
       if (results.totalBiomass >= biomassTarget) {
         results.skippedClusters.push(cluster); // keeping for testing for now
         // break
       } else {
+        console.log(cluster.cluster_no + ',');
         results.totalBiomass += cluster.biomass;
         results.totalArea += cluster.area;
         results.totalCost += cluster.totalCost;
         results.clusters.push(cluster);
+        // await db.table('cluster_results_biomass_cost').insert({
+        //   cluster_no: cluster.cluster_no,
+        //   biomass: cluster.biomass,
+        //   totalcost: cluster.totalCost,
+        //   area: cluster.area,
+        //   distance: cluster.distance,
+        //   harvestcost: cluster.harvestCost,
+        //   transportationcost: cluster.transportationCost,
+        //   residuewt: cluster.frcsResult.Residue.ResidueWt,
+        //   residuepergt: cluster.frcsResult.Residue.ResiduePerGT,
+        //   residueperacre: cluster.frcsResult.Residue.ResiduePerAcre,
+        //   lat: cluster.lat,
+        //   lng: cluster.lng
+        // });
       }
     }
     results.numberOfClusters = results.clusters.length;
+    // params.teaInputs.FuelCost = results.totalCost / results.totalBiomass;
+    // const teaOutput2 = genericPowerOnly(params.teaInputs);
     res.status(200).json(results);
   } catch (e) {
     res.status(400).send(e.message);

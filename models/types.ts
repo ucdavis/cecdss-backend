@@ -23,6 +23,7 @@ export interface Results {
   numberOfClusters: number;
   clusters: ClusterResult[];
   skippedClusters: ClusterResult[];
+  errorClusters: ClusterErrorResult[];
 }
 
 export interface ClusterResult {
@@ -34,4 +35,13 @@ export interface ClusterResult {
   harvestCost: number;
   transportationCost: number;
   frcsResult: OutputVarMod;
+  lat: number;
+  lng: number;
+}
+
+export interface ClusterErrorResult {
+  cluster_no: number;
+  biomass: number;
+  area: number;
+  error: string;
 }

@@ -16,7 +16,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@ucdavis/frcs": "^1.0.6",
+    "@ucdavis/frcs": "^1.0.8",
     "@ucdavis/tea": "^1.0.3",
     "body-parser": "^1.19.0",
     "dotenv": "^8.2.0",
