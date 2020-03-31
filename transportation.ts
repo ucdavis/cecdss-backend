@@ -25,7 +25,6 @@ export const getTransportationCost = (distance: number, duration: number) => {
 
   const miles = distance * KM_TO_MILES;
 
-  // TODO: get from osrm
   const hours = duration;
 
   /*
