@@ -1,13 +1,13 @@
 import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
+import { InputModGPO } from '@ucdavis/tea/out/models/input.model';
 import { OutputModGPO } from '@ucdavis/tea/out/models/output.model';
-import { GenericPowerOnlyInputMod } from './TechnoeconomicInputs';
 
 export interface RequestParams {
   lat: number;
   lng: number;
   radius: number;
   system: string;
-  teaInputs: GenericPowerOnlyInputMod;
+  teaInputs: InputModGPO;
 }
 
 export interface ClusterRequestParams {

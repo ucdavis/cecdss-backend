@@ -4,7 +4,7 @@ import { OutputModGPO } from '@ucdavis/tea/out/models/output.model';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import express from 'express';
-import { getBoundsOfDistance, getDistance } from 'geolib';
+import { getBoundsOfDistance } from 'geolib';
 import knex from 'knex';
 import OSRM from 'osrm';
 import pg from 'pg';
@@ -99,7 +99,9 @@ app.post('/process', async (req, res) => {
         annotations: ['duration', 'distance']
       };
       const route: any = await getRouteDistanceAndDuration(routeOptions);
-      const distance = route.distance * 1000; // m to km
+      let distance = route.distance;
+      distance = distance / 1000; // m to km
+
       const duration = route.duration / 3600; // seconds to hours
       const transportationCostPerGT = getTransportationCost(distance, duration);
       const clusterBiomass = sumBiomass(cluster);
@@ -115,7 +117,7 @@ app.post('/process', async (req, res) => {
           cluster_no: cluster.cluster_no,
           area: cluster.area,
           totalCost: frcsResult.Residue.ResiduePerAcre * cluster.area + transportationCostTotal,
-          biomass: clusterBiomass,
+          biomass: clusterBiomass, // TODO: maybe just use residue biomass
           distance: distance,
           harvestCost: frcsResult.Residue.ResiduePerAcre * cluster.area,
           transportationCost: transportationCostTotal,
@@ -136,6 +138,9 @@ app.post('/process', async (req, res) => {
     clusterCosts.sort((a, b) => {
       return a.totalCost / a.biomass - b.totalCost / b.biomass;
     });
+    // clusterCosts.sort((a, b) => {
+    //   return a.distance - b.distance;
+    // });
 
     console.log('clusters processed: ');
     for (const cluster of clusterCosts) {
