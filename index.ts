@@ -68,7 +68,7 @@ app.post('/process', async (req, res) => {
 
   const bounds = getBoundsOfDistance(
     { latitude: params.lat, longitude: params.lng },
-    params.radius
+    params.radius * 1000 // km to m
   );
 
   try {
