@@ -1,11 +1,11 @@
 import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
 import {
-  genericPowerOnly,
   gasificationPower,
-  hydrogen,
-  genericCombinedHeatPower
+  genericCombinedHeatPower,
+  genericPowerOnly,
+  hydrogen
 } from '@ucdavis/tea';
-import { OutputModGPO, OutputModGP, OutputModCHP } from '@ucdavis/tea/out/models/output.model';
+import { OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/out/models/output.model';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import express from 'express';
@@ -14,16 +14,9 @@ import knex from 'knex';
 import OSRM from 'osrm';
 import pg from 'pg';
 import { TreatedCluster } from './models/treatedcluster';
-import {
-  ClusterRequestParams,
-  ClusterResult,
-  RequestParams,
-  Results,
-  TeaInputs
-} from './models/types';
+import { ClusterRequestParams, ClusterResult, RequestParams, Results } from './models/types';
 import { runFrcsOnCluster } from './runFrcs';
 import { getTransportationCost } from './transportation';
-import { InputModGPO } from '@ucdavis/tea/out/models/input.model';
 
 const PG_DECIMAL_OID = 1700;
 pg.types.setTypeParser(PG_DECIMAL_OID, parseFloat);
