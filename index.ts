@@ -116,10 +116,10 @@ app.post('/process', async (req, res) => {
         clusterCosts.push({
           cluster_no: cluster.cluster_no,
           area: cluster.area,
-          totalCost: frcsResult.Residue.ResiduePerAcre * cluster.area + transportationCostTotal,
+          totalCost: frcsResult.Residue.CostPerAcre * cluster.area + transportationCostTotal,
           biomass: clusterBiomass, // TODO: maybe just use residue biomass
           distance: distance,
-          harvestCost: frcsResult.Residue.ResiduePerAcre * cluster.area,
+          harvestCost: frcsResult.Residue.CostPerAcre * cluster.area,
           transportationCost: transportationCostTotal,
           frcsResult: frcsResult,
           lat: cluster.landing_lat,
