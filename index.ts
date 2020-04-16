@@ -92,7 +92,9 @@ app.post('/process', async (req, res) => {
       numberOfClusters: 0,
       totalBiomass: 0,
       totalArea: 0,
-      totalCost: 0,
+      totalCombinedCost: 0,
+      totalResidueCost: 0,
+      totalTransportationCost: 0,
       clusters: [],
       skippedClusters: [],
       errorClusters: []
@@ -127,10 +129,10 @@ app.post('/process', async (req, res) => {
         clusterCosts.push({
           cluster_no: cluster.cluster_no,
           area: cluster.area,
-          totalCost: frcsResult.Residue.ResiduePerAcre * cluster.area + transportationCostTotal,
+          combinedCost: frcsResult.TotalPerAcre * cluster.area,
           biomass: clusterBiomass, // TODO: maybe just use residue biomass
           distance: distance,
-          harvestCost: frcsResult.Residue.ResiduePerAcre * cluster.area,
+          residueCost: frcsResult.Residue.ResiduePerAcre * cluster.area,
           transportationCost: transportationCostTotal,
           frcsResult: frcsResult,
           lat: cluster.landing_lat,
@@ -147,7 +149,10 @@ app.post('/process', async (req, res) => {
       }
     }
     clusterCosts.sort((a, b) => {
-      return a.totalCost / a.biomass - b.totalCost / b.biomass;
+      return (
+        (a.residueCost + a.transportationCost) / a.biomass -
+        (b.residueCost + b.transportationCost) / b.biomass
+      );
     });
     // clusterCosts.sort((a, b) => {
     //   return a.distance - b.distance;
@@ -161,7 +166,9 @@ app.post('/process', async (req, res) => {
         console.log(cluster.cluster_no + ',');
         results.totalBiomass += cluster.biomass;
         results.totalArea += cluster.area;
-        results.totalCost += cluster.totalCost;
+        results.totalCombinedCost += cluster.combinedCost;
+        results.totalTransportationCost += cluster.transportationCost;
+        results.totalResidueCost += cluster.residueCost;
         results.clusters.push(cluster);
         // await db.table('cluster_results_biomass_cost').insert({
         //   cluster_no: cluster.cluster_no,
@@ -228,7 +235,7 @@ export const sumBiomass = (cluster: TreatedCluster) => {
 };
 
 const getTeaOutputs = (type: string, inputs: any) => {
-  let result: OutputModGPO | OutputModCHP | OutputModGP;
+  let result: OutputModGPO | OutputModCHP;
   if (type === 'GPO') {
     result = genericPowerOnly(inputs);
   } else {
