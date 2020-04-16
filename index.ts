@@ -1,6 +1,11 @@
 import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
-import { genericPowerOnly } from '@ucdavis/tea';
-import { OutputModGPO } from '@ucdavis/tea/out/models/output.model';
+import {
+  genericPowerOnly,
+  gasificationPower,
+  hydrogen,
+  genericCombinedHeatPower
+} from '@ucdavis/tea';
+import { OutputModGPO, OutputModGP, OutputModCHP } from '@ucdavis/tea/out/models/output.model';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import express from 'express';
@@ -9,9 +14,16 @@ import knex from 'knex';
 import OSRM from 'osrm';
 import pg from 'pg';
 import { TreatedCluster } from './models/treatedcluster';
-import { ClusterRequestParams, ClusterResult, RequestParams, Results } from './models/types';
+import {
+  ClusterRequestParams,
+  ClusterResult,
+  RequestParams,
+  Results,
+  TeaInputs
+} from './models/types';
 import { runFrcsOnCluster } from './runFrcs';
 import { getTransportationCost } from './transportation';
+import { InputModGPO } from '@ucdavis/tea/out/models/input.model';
 
 const PG_DECIMAL_OID = 1700;
 pg.types.setTypeParser(PG_DECIMAL_OID, parseFloat);
@@ -63,7 +75,13 @@ app.post('/process', async (req, res) => {
     res.status(400).send('System not recognized');
   }
 
-  const teaOutput: OutputModGPO = genericPowerOnly(params.teaInputs);
+  const teaModels = ['GPO', 'CHP']; // , 'GP'];
+  if (!teaModels.some(x => x === params.teaModelType)) {
+    res.status(400).send('TEA Model not recognized');
+  }
+
+  const teaOutput = getTeaOutputs(params.teaModelType, params.teaInputs);
+
   const biomassTarget = teaOutput.ElectricalAndFuelBaseYear.AnnualFuelConsumption; // dry metric tons / year
 
   const bounds = getBoundsOfDistance(
@@ -215,5 +233,24 @@ export const sumBiomass = (cluster: TreatedCluster) => {
     // + pixel.bmstm_35 +
     // pixel.bmstm_40
   );
+};
+
+const getTeaOutputs = (type: string, inputs: any) => {
+  let result: OutputModGPO | OutputModCHP | OutputModGP;
+  if (type === 'GPO') {
+    result = genericPowerOnly(inputs);
+  } else {
+    // if (type === 'CHP') {
+    result = genericCombinedHeatPower(inputs);
+  }
+  // else {
+  //   // type === 'GP' checked before this is called
+  //   result = gasificationPower(inputs);
+  // }
+  return result;
+
+  // if (type === 'Hydrogen') {
+  //   return hydrogen(inputs);
+  // }
 };
 app.listen(port, () => console.log(`Listening on port ${port}!`));

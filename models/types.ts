@@ -1,5 +1,10 @@
 import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
-import { InputModGPO } from '@ucdavis/tea/out/models/input.model';
+import {
+  InputModCHP,
+  InputModGP,
+  InputModGPO,
+  InputModHydrogen
+} from '@ucdavis/tea/out/models/input.model';
 import { OutputModGPO } from '@ucdavis/tea/out/models/output.model';
 
 export interface RequestParams {
@@ -7,7 +12,8 @@ export interface RequestParams {
   lng: number;
   radius: number;
   system: string;
-  teaInputs: InputModGPO;
+  teaModelType: string;
+  teaInputs: InputModGPO | InputModCHP | InputModGP; // | InputModHydrogen;
 }
 
 export interface ClusterRequestParams {
