@@ -69,11 +69,11 @@ app.post('/process', async (req, res) => {
   }
 
   const teaModels = ['GPO', 'CHP']; // , 'GP'];
-  if (!teaModels.some(x => x === params.teaModelType)) {
+  if (!teaModels.some(x => x === params.teaModel)) {
     res.status(400).send('TEA Model not recognized');
   }
 
-  const teaOutput = getTeaOutputs(params.teaModelType, params.teaInputs);
+  const teaOutput = getTeaOutputs(params.teaModel, params.teaInputs);
 
   const biomassTarget = teaOutput.ElectricalAndFuelBaseYear.AnnualFuelConsumption; // dry metric tons / year
 
@@ -153,7 +153,6 @@ app.post('/process', async (req, res) => {
     //   return a.distance - b.distance;
     // });
 
-    console.log('clusters processed: ');
     for (const cluster of clusterCosts) {
       if (results.totalBiomass >= biomassTarget) {
         results.skippedClusters.push(cluster); // keeping for testing for now

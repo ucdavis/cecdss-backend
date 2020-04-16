@@ -5,14 +5,14 @@ import {
   InputModGPO,
   InputModHydrogen
 } from '@ucdavis/tea/out/models/input.model';
-import { OutputModGPO } from '@ucdavis/tea/out/models/output.model';
+import { OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/out/models/output.model';
 
 export interface RequestParams {
   lat: number;
   lng: number;
   radius: number;
   system: string;
-  teaModelType: string;
+  teaModel: string;
   teaInputs: InputModGPO | InputModCHP | InputModGP; // | InputModHydrogen;
 }
 
@@ -22,7 +22,7 @@ export interface ClusterRequestParams {
 }
 
 export interface Results {
-  teaResults: OutputModGPO;
+  teaResults: OutputModGPO | OutputModCHP; // | OutputModGP;
   totalBiomass: number;
   totalArea: number;
   totalCost: number;
