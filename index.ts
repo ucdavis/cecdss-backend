@@ -5,9 +5,11 @@ import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import express from 'express';
 import { getBoundsOfDistance } from 'geolib';
+import fetch from 'isomorphic-fetch';
 import knex from 'knex';
 import OSRM from 'osrm';
 import pg from 'pg';
+import { LCAresults } from './models/lcaModels';
 import { TreatedCluster } from './models/treatedcluster';
 import { ClusterRequestParams, ClusterResult, RequestParams, Results } from './models/types';
 import { runFrcsOnCluster } from './runFrcs';
@@ -170,6 +172,10 @@ app.post('/process', async (req, res) => {
       }
     }
     results.numberOfClusters = results.clusters.length;
+    console.log('running LCA...');
+    console.log(results);
+    const lca = await runLca(results.clusters[0], 'CHP');
+    console.log(lca);
     // params.teaInputs.FuelCost = results.totalCost / results.totalBiomass;
     // const teaOutput2 = genericPowerOnly(params.teaInputs);
     res.status(200).json(results);
@@ -189,6 +195,25 @@ const getRouteDistanceAndDuration = (routeOptions: OSRM.RouteOptions) => {
       resolve({ distance, duration });
     });
   });
+};
+
+export const runLca = async (cluster: ClusterResult, technology: string) => {
+  console.log(cluster);
+  const results: LCAresults = await fetch(
+    `https://lifecycle-analysis.azurewebsites.net/lcarun?technology=\
+       ${technology}&diesel=${cluster.frcsResult.Residue.DieselPerAcre}\
+       &gasoline=${cluster.frcsResult.Residue.GasolinePerAcre}\
+       &jetfuel=${cluster.frcsResult.Residue.JetFuelPerAcre}\
+       &distance=${cluster.distance}&biomass=${cluster.biomass}`,
+    {
+      mode: 'cors',
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }
+  ).then(res => res.json());
+  return results;
 };
 
 export const sumBiomass = (cluster: TreatedCluster) => {

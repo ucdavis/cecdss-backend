@@ -1,6 +1,7 @@
 import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
 import { InputModGPO } from '@ucdavis/tea/out/models/input.model';
 import { OutputModGPO } from '@ucdavis/tea/out/models/output.model';
+import { LCAresults } from './lcaModels';
 
 export interface RequestParams {
   lat: number;
@@ -17,6 +18,7 @@ export interface ClusterRequestParams {
 
 export interface Results {
   teaResults: OutputModGPO;
+  lcaResults?: LCAresults;
   totalBiomass: number;
   totalArea: number;
   totalCost: number;
