@@ -1,6 +1,11 @@
 import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
-import { genericPowerOnly } from '@ucdavis/tea';
-import { OutputModGPO } from '@ucdavis/tea/out/models/output.model';
+import {
+  gasificationPower,
+  genericCombinedHeatPower,
+  genericPowerOnly,
+  hydrogen
+} from '@ucdavis/tea';
+import { OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/out/models/output.model';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import express from 'express';
@@ -63,7 +68,13 @@ app.post('/process', async (req, res) => {
     res.status(400).send('System not recognized');
   }
 
-  const teaOutput: OutputModGPO = genericPowerOnly(params.teaInputs);
+  const teaModels = ['GPO', 'CHP']; // , 'GP'];
+  if (!teaModels.some(x => x === params.teaModel)) {
+    res.status(400).send('TEA Model not recognized');
+  }
+
+  const teaOutput = getTeaOutputs(params.teaModel, params.teaInputs);
+
   const biomassTarget = teaOutput.ElectricalAndFuelBaseYear.AnnualFuelConsumption; // dry metric tons / year
 
   const bounds = getBoundsOfDistance(
@@ -81,7 +92,9 @@ app.post('/process', async (req, res) => {
       numberOfClusters: 0,
       totalBiomass: 0,
       totalArea: 0,
-      totalCost: 0,
+      totalCombinedCost: 0,
+      totalResidueCost: 0,
+      totalTransportationCost: 0,
       clusters: [],
       skippedClusters: [],
       errorClusters: []
@@ -116,10 +129,10 @@ app.post('/process', async (req, res) => {
         clusterCosts.push({
           cluster_no: cluster.cluster_no,
           area: cluster.area,
-          totalCost: frcsResult.Residue.ResiduePerAcre * cluster.area + transportationCostTotal,
+          combinedCost: frcsResult.TotalPerAcre * cluster.area,
           biomass: clusterBiomass, // TODO: maybe just use residue biomass
           distance: distance,
-          harvestCost: frcsResult.Residue.ResiduePerAcre * cluster.area,
+          residueCost: frcsResult.Residue.ResiduePerAcre * cluster.area,
           transportationCost: transportationCostTotal,
           frcsResult: frcsResult,
           lat: cluster.landing_lat,
@@ -136,13 +149,15 @@ app.post('/process', async (req, res) => {
       }
     }
     clusterCosts.sort((a, b) => {
-      return a.totalCost / a.biomass - b.totalCost / b.biomass;
+      return (
+        (a.residueCost + a.transportationCost) / a.biomass -
+        (b.residueCost + b.transportationCost) / b.biomass
+      );
     });
     // clusterCosts.sort((a, b) => {
     //   return a.distance - b.distance;
     // });
 
-    console.log('clusters processed: ');
     for (const cluster of clusterCosts) {
       if (results.totalBiomass >= biomassTarget) {
         results.skippedClusters.push(cluster); // keeping for testing for now
@@ -151,7 +166,9 @@ app.post('/process', async (req, res) => {
         console.log(cluster.cluster_no + ',');
         results.totalBiomass += cluster.biomass;
         results.totalArea += cluster.area;
-        results.totalCost += cluster.totalCost;
+        results.totalCombinedCost += cluster.combinedCost;
+        results.totalTransportationCost += cluster.transportationCost;
+        results.totalResidueCost += cluster.residueCost;
         results.clusters.push(cluster);
         // await db.table('cluster_results_biomass_cost').insert({
         //   cluster_no: cluster.cluster_no,
@@ -215,5 +232,24 @@ export const sumBiomass = (cluster: TreatedCluster) => {
     // + pixel.bmstm_35 +
     // pixel.bmstm_40
   );
+};
+
+const getTeaOutputs = (type: string, inputs: any) => {
+  let result: OutputModGPO | OutputModCHP;
+  if (type === 'GPO') {
+    result = genericPowerOnly(inputs);
+  } else {
+    // if (type === 'CHP') {
+    result = genericCombinedHeatPower(inputs);
+  }
+  // else {
+  //   // type === 'GP' checked before this is called
+  //   result = gasificationPower(inputs);
+  // }
+  return result;
+
+  // if (type === 'Hydrogen') {
+  //   return hydrogen(inputs);
+  // }
 };
 app.listen(port, () => console.log(`Listening on port ${port}!`));
