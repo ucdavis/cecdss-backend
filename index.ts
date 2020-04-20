@@ -7,6 +7,7 @@ import {
 } from '@ucdavis/tea';
 import { OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/out/models/output.model';
 import bodyParser from 'body-parser';
+import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
 import { getBoundsOfDistance } from 'geolib';
@@ -44,11 +45,7 @@ const db = knex({
 const osrm = new OSRM('./data/california-latest.osrm');
 
 // allow cors
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-  next();
-});
+app.use(cors());
 
 app.post('/process', async (req, res) => {
   const params: RequestParams = req.body;
