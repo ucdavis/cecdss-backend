@@ -41,8 +41,10 @@ const db = knex({
     port: Number(process.env.DB_PORT)
   }
 });
+console.log('connected to db. connected to osrm...');
 
 const osrm = new OSRM('./data/california-latest.osrm');
+console.log('connected to osrm');
 
 // allow cors
 app.use(cors());
