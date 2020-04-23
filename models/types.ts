@@ -1,6 +1,6 @@
 import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
 import { InputModCHP, InputModGP, InputModGPO } from '@ucdavis/tea/out/models/input.model';
-import { OutputModCHP, OutputModGPO } from '@ucdavis/tea/out/models/output.model';
+import { OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/out/models/output.model';
 
 export interface RequestParams {
   lat: number;
@@ -17,7 +17,7 @@ export interface ClusterRequestParams {
 }
 
 export interface Results {
-  teaResults: OutputModGPO | OutputModCHP; // | OutputModGP;
+  teaResults: OutputModGPO | OutputModCHP | OutputModGP;
   totalBiomass: number;
   totalArea: number;
   totalCombinedCost: number;

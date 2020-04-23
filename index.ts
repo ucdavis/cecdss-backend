@@ -14,6 +14,11 @@ import { getBoundsOfDistance } from 'geolib';
 import knex from 'knex';
 import OSRM from 'osrm';
 import pg from 'pg';
+import {
+  ElectricalFuelBaseYearModCHPClass,
+  ElectricalFuelBaseYearModGPClass,
+  ElectricalFuelBaseYearModGPOClass
+} from './models/classes';
 import { TreatedCluster } from './models/treatedcluster';
 import { ClusterRequestParams, ClusterResult, RequestParams, Results } from './models/types';
 import { runFrcsOnCluster } from './runFrcs';
@@ -67,15 +72,33 @@ app.post('/process', async (req, res) => {
     res.status(400).send('System not recognized');
   }
 
-  const teaModels = ['GPO', 'CHP']; // , 'GP'];
+  const teaModels = ['GPO', 'CHP', 'GP'];
   if (!teaModels.some(x => x === params.teaModel)) {
     res.status(400).send('TEA Model not recognized');
   }
 
-  const teaOutput = getTeaOutputs(params.teaModel, params.teaInputs);
-
-  const biomassTarget = teaOutput.ElectricalAndFuelBaseYear.AnnualFuelConsumption; // dry metric tons / year
-
+  const teaOutput: any = await getTeaOutputs(params.teaModel, params.teaInputs);
+  console.log('TEA OUTPUT:');
+  console.log(teaOutput);
+  let biomassTarget = 0;
+  if (
+    params.teaModel === 'GPO' ||
+    params.teaModel === 'CHP' // &&
+    // (teaOutput.ElectricalAndFuelBaseYear instanceof ElectricalFuelBaseYearModGPOClass ||
+    //   teaOutput.ElectricalAndFuelBaseYear instanceof ElectricalFuelBaseYearModCHPClass)
+  ) {
+    console.log('GPO or CHP');
+    biomassTarget = teaOutput.ElectricalAndFuelBaseYear.AnnualFuelConsumption; // dry metric tons / year
+  } else if (
+    params.teaModel === 'GP' // &&
+    // teaOutput.ElectricalAndFuelBaseYear instanceof ElectricalFuelBaseYearModGPClass
+  ) {
+    console.log('GP');
+    biomassTarget = teaOutput.ElectricalAndFuelBaseYear.AnnualBiomassConsumptionDryMass;
+  } else {
+    console.log('what');
+  }
+  console.log('biomassTarget: ' + biomassTarget);
   const bounds = getBoundsOfDistance(
     { latitude: params.lat, longitude: params.lng },
     params.radius * 1000 // km to m
@@ -233,22 +256,16 @@ export const sumBiomass = (cluster: TreatedCluster) => {
   );
 };
 
-const getTeaOutputs = (type: string, inputs: any) => {
-  let result: OutputModGPO | OutputModCHP;
+const getTeaOutputs = async (type: string, inputs: any) => {
+  let result: OutputModGPO | OutputModCHP | OutputModGP;
   if (type === 'GPO') {
     result = genericPowerOnly(inputs);
-  } else {
-    // if (type === 'CHP') {
+  } else if (type === 'CHP') {
     result = genericCombinedHeatPower(inputs);
+  } else {
+    // type === 'GP' checked before this is called
+    result = gasificationPower(inputs);
   }
-  // else {
-  //   // type === 'GP' checked before this is called
-  //   result = gasificationPower(inputs);
-  // }
   return result;
-
-  // if (type === 'Hydrogen') {
-  //   return hydrogen(inputs);
-  // }
 };
 app.listen(port, () => console.log(`Listening on port ${port}!`));
