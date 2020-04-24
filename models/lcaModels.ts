@@ -8,11 +8,12 @@ export interface RunParams {
 }
 
 export interface LCAresults {
-  LCIresults: LCIAresults;
-  LCIAresults: LCIAresults;
+  lciResults: lciResults;
+  lciaResults: lciaResults;
 }
 
-export interface LCIresults {
+// tslint:disable-next-line: class-name
+export interface lciResults {
   CO2: number; // grams
   CH4: number;
   N2O: number;
@@ -23,7 +24,8 @@ export interface LCIresults {
   Particulates: number;
 }
 
-export interface LCIAresults {
+// tslint:disable-next-line: class-name
+export interface lciaResults {
   global_warming_air: number;
   acidification_air: number;
   hh_particulate_air: number;

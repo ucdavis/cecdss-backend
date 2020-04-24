@@ -215,6 +215,7 @@ app.post('/process', async (req, res) => {
     console.log(results);
     const lca = await runLca(results.clusters[0], params.teaModel);
     console.log(lca);
+    results.lcaResults = lca;
     // params.teaInputs.FuelCost = results.totalCost / results.totalBiomass;
     // const teaOutput2 = genericPowerOnly(params.teaInputs);
     res.status(200).json(results);
