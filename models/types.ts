@@ -1,6 +1,6 @@
 import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
-import { InputModGPO } from '@ucdavis/tea/out/models/input.model';
-import { OutputModGPO } from '@ucdavis/tea/out/models/output.model';
+import { InputModCHP, InputModGP, InputModGPO } from '@ucdavis/tea/out/models/input.model';
+import { OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/out/models/output.model';
 import { LCAresults } from './lcaModels';
 
 export interface RequestParams {
@@ -8,7 +8,8 @@ export interface RequestParams {
   lng: number;
   radius: number;
   system: string;
-  teaInputs: InputModGPO;
+  teaModel: string;
+  teaInputs: InputModGPO | InputModCHP | InputModGP; // | InputModHydrogen;
 }
 
 export interface ClusterRequestParams {
@@ -17,11 +18,13 @@ export interface ClusterRequestParams {
 }
 
 export interface Results {
-  teaResults: OutputModGPO;
   lcaResults?: LCAresults;
+  teaResults: OutputModGPO | OutputModCHP | OutputModGP;
   totalBiomass: number;
   totalArea: number;
-  totalCost: number;
+  totalCombinedCost: number;
+  totalResidueCost: number;
+  totalTransportationCost: number;
   numberOfClusters: number;
   clusters: ClusterResult[];
   skippedClusters: ClusterResult[];
@@ -31,10 +34,10 @@ export interface Results {
 export interface ClusterResult {
   cluster_no: number;
   biomass: number;
-  totalCost: number;
+  combinedCost: number;
   area: number;
   distance: number;
-  harvestCost: number;
+  residueCost: number;
   transportationCost: number;
   frcsResult: OutputVarMod;
   lat: number;

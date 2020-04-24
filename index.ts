@@ -1,7 +1,13 @@
 import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
-import { genericPowerOnly } from '@ucdavis/tea';
-import { OutputModGPO } from '@ucdavis/tea/out/models/output.model';
+import {
+  gasificationPower,
+  genericCombinedHeatPower,
+  genericPowerOnly,
+  hydrogen
+} from '@ucdavis/tea';
+import { OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/out/models/output.model';
 import bodyParser from 'body-parser';
+import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
 import { getBoundsOfDistance } from 'geolib';
@@ -9,6 +15,11 @@ import fetch from 'isomorphic-fetch';
 import knex from 'knex';
 import OSRM from 'osrm';
 import pg from 'pg';
+import {
+  ElectricalFuelBaseYearModCHPClass,
+  ElectricalFuelBaseYearModGPClass,
+  ElectricalFuelBaseYearModGPOClass
+} from './models/classes';
 import { LCAresults } from './models/lcaModels';
 import { TreatedCluster } from './models/treatedcluster';
 import { ClusterRequestParams, ClusterResult, RequestParams, Results } from './models/types';
@@ -37,15 +48,13 @@ const db = knex({
     port: Number(process.env.DB_PORT)
   }
 });
+console.log('connected to db. connected to osrm...');
 
 const osrm = new OSRM('./data/california-latest.osrm');
+console.log('connected to osrm');
 
 // allow cors
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-  next();
-});
+app.use(cors());
 
 app.post('/process', async (req, res) => {
   const params: RequestParams = req.body;
@@ -65,9 +74,33 @@ app.post('/process', async (req, res) => {
     res.status(400).send('System not recognized');
   }
 
-  const teaOutput: OutputModGPO = genericPowerOnly(params.teaInputs);
-  const biomassTarget = teaOutput.ElectricalAndFuelBaseYear.AnnualFuelConsumption; // dry metric tons / year
+  const teaModels = ['GPO', 'CHP', 'GP'];
+  if (!teaModels.some(x => x === params.teaModel)) {
+    res.status(400).send('TEA Model not recognized');
+  }
 
+  const teaOutput: any = await getTeaOutputs(params.teaModel, params.teaInputs);
+  console.log('TEA OUTPUT:');
+  console.log(teaOutput);
+  let biomassTarget = 0;
+  if (
+    params.teaModel === 'GPO' ||
+    params.teaModel === 'CHP' // &&
+    // (teaOutput.ElectricalAndFuelBaseYear instanceof ElectricalFuelBaseYearModGPOClass ||
+    //   teaOutput.ElectricalAndFuelBaseYear instanceof ElectricalFuelBaseYearModCHPClass)
+  ) {
+    console.log('GPO or CHP');
+    biomassTarget = teaOutput.ElectricalAndFuelBaseYear.AnnualFuelConsumption; // dry metric tons / year
+  } else if (
+    params.teaModel === 'GP' // &&
+    // teaOutput.ElectricalAndFuelBaseYear instanceof ElectricalFuelBaseYearModGPClass
+  ) {
+    console.log('GP');
+    biomassTarget = teaOutput.ElectricalAndFuelBaseYear.AnnualBiomassConsumptionDryMass;
+  } else {
+    console.log('what');
+  }
+  console.log('biomassTarget: ' + biomassTarget);
   const bounds = getBoundsOfDistance(
     { latitude: params.lat, longitude: params.lng },
     params.radius * 1000 // km to m
@@ -83,7 +116,9 @@ app.post('/process', async (req, res) => {
       numberOfClusters: 0,
       totalBiomass: 0,
       totalArea: 0,
-      totalCost: 0,
+      totalCombinedCost: 0,
+      totalResidueCost: 0,
+      totalTransportationCost: 0,
       clusters: [],
       skippedClusters: [],
       errorClusters: []
@@ -118,10 +153,10 @@ app.post('/process', async (req, res) => {
         clusterCosts.push({
           cluster_no: cluster.cluster_no,
           area: cluster.area,
-          totalCost: frcsResult.Residue.CostPerAcre * cluster.area + transportationCostTotal,
+          combinedCost: frcsResult.Total.CostPerAcre * cluster.area,
           biomass: clusterBiomass, // TODO: maybe just use residue biomass
           distance: distance,
-          harvestCost: frcsResult.Residue.CostPerAcre * cluster.area,
+          residueCost: frcsResult.Residue.CostPerAcre * cluster.area,
           transportationCost: transportationCostTotal,
           frcsResult: frcsResult,
           lat: cluster.landing_lat,
@@ -138,13 +173,15 @@ app.post('/process', async (req, res) => {
       }
     }
     clusterCosts.sort((a, b) => {
-      return a.totalCost / a.biomass - b.totalCost / b.biomass;
+      return (
+        (a.residueCost + a.transportationCost) / a.biomass -
+        (b.residueCost + b.transportationCost) / b.biomass
+      );
     });
     // clusterCosts.sort((a, b) => {
     //   return a.distance - b.distance;
     // });
 
-    console.log('clusters processed: ');
     for (const cluster of clusterCosts) {
       if (results.totalBiomass >= biomassTarget) {
         results.skippedClusters.push(cluster); // keeping for testing for now
@@ -153,7 +190,9 @@ app.post('/process', async (req, res) => {
         console.log(cluster.cluster_no + ',');
         results.totalBiomass += cluster.biomass;
         results.totalArea += cluster.area;
-        results.totalCost += cluster.totalCost;
+        results.totalCombinedCost += cluster.combinedCost;
+        results.totalTransportationCost += cluster.transportationCost;
+        results.totalResidueCost += cluster.residueCost;
         results.clusters.push(cluster);
         // await db.table('cluster_results_biomass_cost').insert({
         //   cluster_no: cluster.cluster_no,
@@ -174,7 +213,7 @@ app.post('/process', async (req, res) => {
     results.numberOfClusters = results.clusters.length;
     console.log('running LCA...');
     console.log(results);
-    const lca = await runLca(results.clusters[0], 'CHP');
+    const lca = await runLca(results.clusters[0], params.teaModel);
     console.log(lca);
     // params.teaInputs.FuelCost = results.totalCost / results.totalBiomass;
     // const teaOutput2 = genericPowerOnly(params.teaInputs);
@@ -240,5 +279,18 @@ export const sumBiomass = (cluster: TreatedCluster) => {
     // + pixel.bmstm_35 +
     // pixel.bmstm_40
   );
+};
+
+const getTeaOutputs = async (type: string, inputs: any) => {
+  let result: OutputModGPO | OutputModCHP | OutputModGP;
+  if (type === 'GPO') {
+    result = genericPowerOnly(inputs);
+  } else if (type === 'CHP') {
+    result = genericCombinedHeatPower(inputs);
+  } else {
+    // type === 'GP' checked before this is called
+    result = gasificationPower(inputs);
+  }
+  return result;
 };
 app.listen(port, () => console.log(`Listening on port ${port}!`));
