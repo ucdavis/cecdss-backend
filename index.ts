@@ -20,7 +20,7 @@ import {
   ElectricalFuelBaseYearModGPClass,
   ElectricalFuelBaseYearModGPOClass
 } from './models/classes';
-import { LCAresults } from './models/lcaModels';
+import { LCAresults, LCARunParams } from './models/lcaModels';
 import { TreatedCluster } from './models/treatedcluster';
 import { ClusterRequestParams, ClusterResult, RequestParams, Results } from './models/types';
 import { runFrcsOnCluster } from './runFrcs';
@@ -79,6 +79,7 @@ app.post('/process', async (req, res) => {
     res.status(400).send('TEA Model not recognized');
   }
 
+  // TODO: use separate TEA endpoint just to get biomass target
   const teaOutput: any = await getTeaOutputs(params.teaModel, params.teaInputs);
   console.log('TEA OUTPUT:');
   console.log(teaOutput);
@@ -135,6 +136,7 @@ app.post('/process', async (req, res) => {
         ],
         annotations: ['duration', 'distance']
       };
+
       const route: any = await getRouteDistanceAndDuration(routeOptions);
       let distance = route.distance;
       distance = distance / 1000; // m to km
@@ -153,9 +155,9 @@ app.post('/process', async (req, res) => {
         clusterCosts.push({
           cluster_no: cluster.cluster_no,
           area: cluster.area,
-          combinedCost: frcsResult.Total.CostPerAcre * cluster.area,
           biomass: clusterBiomass, // TODO: maybe just use residue biomass
           distance: distance,
+          combinedCost: frcsResult.Total.CostPerAcre * cluster.area,
           residueCost: frcsResult.Residue.CostPerAcre * cluster.area,
           transportationCost: transportationCostTotal,
           frcsResult: frcsResult,
@@ -182,6 +184,13 @@ app.post('/process', async (req, res) => {
     //   return a.distance - b.distance;
     // });
 
+    const lcaTotals = {
+      totalDiesel: 0,
+      totalGasoline: 0,
+      totalJetFuel: 0,
+      totalTransportationDistance: 0
+    };
+
     for (const cluster of clusterCosts) {
       if (results.totalBiomass >= biomassTarget) {
         results.skippedClusters.push(cluster); // keeping for testing for now
@@ -193,6 +202,11 @@ app.post('/process', async (req, res) => {
         results.totalCombinedCost += cluster.combinedCost;
         results.totalTransportationCost += cluster.transportationCost;
         results.totalResidueCost += cluster.residueCost;
+        lcaTotals.totalDiesel += cluster.frcsResult.Residue.DieselPerAcre * cluster.area;
+        lcaTotals.totalGasoline += cluster.frcsResult.Residue.GasolinePerAcre * cluster.area;
+        lcaTotals.totalJetFuel += cluster.frcsResult.Residue.JetFuelPerAcre * cluster.area;
+        lcaTotals.totalTransportationDistance += cluster.distance;
+
         results.clusters.push(cluster);
         // await db.table('cluster_results_biomass_cost').insert({
         //   cluster_no: cluster.cluster_no,
@@ -213,11 +227,30 @@ app.post('/process', async (req, res) => {
     results.numberOfClusters = results.clusters.length;
     console.log('running LCA...');
     console.log(results);
-    const lca = await runLca(results.clusters[0], params.teaModel);
+    const lcaInputs: LCARunParams = {
+      technology: params.teaModel,
+      dieselPerKwhElectricity: lcaTotals.totalDiesel / params.teaInputs.NetElectricalCapacity,
+      gasolinePerKwhElectricity: lcaTotals.totalGasoline / params.teaInputs.NetElectricalCapacity,
+      jetFuelPerKwhElectricity: lcaTotals.totalJetFuel / params.teaInputs.NetElectricalCapacity,
+      transportationDistance: lcaTotals.totalTransportationDistance,
+      biomassPerKwhElectricity: results.totalBiomass / params.teaInputs.NetElectricalCapacity
+    };
+    const lca = await runLca(lcaInputs);
     console.log(lca);
     results.lcaResults = lca;
-    // params.teaInputs.FuelCost = results.totalCost / results.totalBiomass;
-    // const teaOutput2 = genericPowerOnly(params.teaInputs);
+    // $ / dry metric ton
+    const fuelCost =
+      (results.totalResidueCost + results.totalTransportationCost) / results.totalBiomass;
+    const teaInputs2: any = { ...params.teaInputs };
+    // TODO: clean up w/ better tea models
+    if (params.teaModel === 'GP') {
+      teaInputs2.BiomassFuelCost = fuelCost;
+    } else {
+      teaInputs2.FuelCost = fuelCost;
+    }
+    const teaOutput2: any = await getTeaOutputs(params.teaModel, teaInputs2);
+    results.teaResults = teaOutput2;
+
     res.status(200).json(results);
   } catch (e) {
     res.status(400).send(e.message);
@@ -237,14 +270,13 @@ const getRouteDistanceAndDuration = (routeOptions: OSRM.RouteOptions) => {
   });
 };
 
-export const runLca = async (cluster: ClusterResult, technology: string) => {
-  console.log(cluster);
+export const runLca = async (inputs: LCARunParams) => {
   const results: LCAresults = await fetch(
     `https://lifecycle-analysis.azurewebsites.net/lcarun?technology=\
-       ${technology}&diesel=${cluster.frcsResult.Residue.DieselPerAcre}\
-       &gasoline=${cluster.frcsResult.Residue.GasolinePerAcre}\
-       &jetfuel=${cluster.frcsResult.Residue.JetFuelPerAcre}\
-       &distance=${cluster.distance}&biomass=${cluster.biomass}`,
+       ${inputs.technology}&diesel=${inputs.dieselPerKwhElectricity}\
+       &gasoline=${inputs.gasolinePerKwhElectricity}\
+       &jetfuel=${inputs.jetFuelPerKwhElectricity}\
+       &distance=${inputs.transportationDistance}&biomass=${inputs.biomassPerKwhElectricity}`,
     {
       mode: 'cors',
       method: 'GET',
