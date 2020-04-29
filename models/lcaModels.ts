@@ -1,10 +1,10 @@
-export interface RunParams {
+export interface LCARunParams {
   technology: string;
-  diesel: number; // m3
-  gasoline: number; // m3
-  jetfuel: number; // m3
-  distance: number; // km
-  biomass: number; // tons
+  dieselPerKwhElectricity: number; // m3
+  gasolinePerKwhElectricity: number; // m3
+  jetFuelPerKwhElectricity: number; // m3
+  transportationDistance: number; // km
+  biomassPerKwhElectricity: number; // tons
 }
 
 export interface LCAresults {
