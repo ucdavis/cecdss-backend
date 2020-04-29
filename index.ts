@@ -79,6 +79,7 @@ app.post('/process', async (req, res) => {
     res.status(400).send('TEA Model not recognized');
   }
 
+  // TODO: use separate TEA endpoint just to get biomass target
   const teaOutput: any = await getTeaOutputs(params.teaModel, params.teaInputs);
   console.log('TEA OUTPUT:');
   console.log(teaOutput);
@@ -153,9 +154,9 @@ app.post('/process', async (req, res) => {
         clusterCosts.push({
           cluster_no: cluster.cluster_no,
           area: cluster.area,
-          combinedCost: frcsResult.Total.CostPerAcre * cluster.area,
           biomass: clusterBiomass, // TODO: maybe just use residue biomass
           distance: distance,
+          combinedCost: frcsResult.Total.CostPerAcre * cluster.area,
           residueCost: frcsResult.Residue.CostPerAcre * cluster.area,
           transportationCost: transportationCostTotal,
           frcsResult: frcsResult,
@@ -216,8 +217,19 @@ app.post('/process', async (req, res) => {
     const lca = await runLca(results.clusters[0], params.teaModel);
     console.log(lca);
     results.lcaResults = lca;
-    // params.teaInputs.FuelCost = results.totalCost / results.totalBiomass;
-    // const teaOutput2 = genericPowerOnly(params.teaInputs);
+    // $ / dry metric ton
+    const fuelCost =
+      (results.totalResidueCost + results.totalTransportationCost) / results.totalBiomass;
+    const teaInputs2: any = { ...params.teaInputs };
+    // TODO: clean up w/ better tea models
+    if (params.teaModel === 'GP') {
+      teaInputs2.BiomassFuelCost = fuelCost;
+    } else {
+      teaInputs2.FuelCost = fuelCost;
+    }
+    const teaOutput2: any = await getTeaOutputs(params.teaModel, teaInputs2);
+    results.teaResults = teaOutput2;
+
     res.status(200).json(results);
   } catch (e) {
     res.status(400).send(e.message);
