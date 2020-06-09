@@ -15,11 +15,6 @@ import fetch from 'isomorphic-fetch';
 import knex from 'knex';
 import OSRM from 'osrm';
 import pg from 'pg';
-import {
-  ElectricalFuelBaseYearModCHPClass,
-  ElectricalFuelBaseYearModGPClass,
-  ElectricalFuelBaseYearModGPOClass
-} from './models/classes';
 import { LCAresults, LCARunParams } from './models/lcaModels';
 import { TreatedCluster } from './models/treatedcluster';
 import { ClusterRequestParams, ClusterResult, RequestParams, Results } from './models/types';
@@ -80,28 +75,13 @@ app.post('/process', async (req, res) => {
   }
 
   // TODO: use separate TEA endpoint just to get biomass target
-  const teaOutput: any = await getTeaOutputs(params.teaModel, params.teaInputs);
+  const teaOutput: OutputModGPO | OutputModCHP | OutputModGP = await getTeaOutputs(
+    params.teaModel,
+    params.teaInputs
+  );
   console.log('TEA OUTPUT:');
   console.log(teaOutput);
-  let biomassTarget = 0;
-  if (
-    params.teaModel === 'GPO' ||
-    params.teaModel === 'CHP' // &&
-    // (teaOutput.ElectricalAndFuelBaseYear instanceof ElectricalFuelBaseYearModGPOClass ||
-    //   teaOutput.ElectricalAndFuelBaseYear instanceof ElectricalFuelBaseYearModCHPClass)
-  ) {
-    console.log('GPO or CHP');
-    biomassTarget = teaOutput.ElectricalAndFuelBaseYear.AnnualFuelConsumption; // dry metric tons / year
-  } else if (
-    params.teaModel === 'GP' // &&
-    // teaOutput.ElectricalAndFuelBaseYear instanceof ElectricalFuelBaseYearModGPClass
-  ) {
-    console.log('GP');
-    biomassTarget = teaOutput.ElectricalAndFuelBaseYear.AnnualBiomassConsumptionDryMass;
-  } else {
-    console.log('what');
-  }
-  console.log('biomassTarget: ' + biomassTarget);
+  const biomassTarget = teaOutput.ElectricalAndFuelBaseYear.BiomassTarget;
   const bounds = getBoundsOfDistance(
     { latitude: params.lat, longitude: params.lng },
     params.radius * 1000 // km to m
@@ -229,11 +209,15 @@ app.post('/process', async (req, res) => {
     console.log(results);
     const lcaInputs: LCARunParams = {
       technology: params.teaModel,
-      dieselPerKwhElectricity: lcaTotals.totalDiesel / params.teaInputs.NetElectricalCapacity,
-      gasolinePerKwhElectricity: lcaTotals.totalGasoline / params.teaInputs.NetElectricalCapacity,
-      jetFuelPerKwhElectricity: lcaTotals.totalJetFuel / params.teaInputs.NetElectricalCapacity,
+      dieselPerKwhElectricity:
+        lcaTotals.totalDiesel / params.teaInputs.ElectricalFuelBaseYear.NetElectricalCapacity,
+      gasolinePerKwhElectricity:
+        lcaTotals.totalGasoline / params.teaInputs.ElectricalFuelBaseYear.NetElectricalCapacity,
+      jetFuelPerKwhElectricity:
+        lcaTotals.totalJetFuel / params.teaInputs.ElectricalFuelBaseYear.NetElectricalCapacity,
       transportationDistance: lcaTotals.totalTransportationDistance,
-      biomassPerKwhElectricity: results.totalBiomass / params.teaInputs.NetElectricalCapacity
+      biomassPerKwhElectricity:
+        results.totalBiomass / params.teaInputs.ElectricalFuelBaseYear.NetElectricalCapacity
     };
     const lca = await runLca(lcaInputs);
     console.log(lca);
@@ -241,15 +225,11 @@ app.post('/process', async (req, res) => {
     // $ / dry metric ton
     const fuelCost =
       (results.totalResidueCost + results.totalTransportationCost) / results.totalBiomass;
-    const teaInputs2: any = { ...params.teaInputs };
-    // TODO: clean up w/ better tea models
-    if (params.teaModel === 'GP') {
-      teaInputs2.BiomassFuelCost = fuelCost;
-    } else {
-      teaInputs2.FuelCost = fuelCost;
-    }
-    const teaOutput2: any = await getTeaOutputs(params.teaModel, teaInputs2);
-    results.teaResults = teaOutput2;
+    const updatedTeaInputs: any = { ...params.teaInputs }; // copy original tea inputs
+    updatedTeaInputs.BiomassFuelCost = fuelCost; // but update using fuel cost calculated from frcs results
+
+    const updatedTeaOutputs: any = await getTeaOutputs(params.teaModel, updatedTeaInputs);
+    results.teaResults = updatedTeaOutputs;
 
     res.status(200).json(results);
   } catch (e) {
@@ -289,6 +269,7 @@ export const runLca = async (inputs: LCARunParams) => {
 };
 
 export const sumBiomass = (cluster: TreatedCluster) => {
+  // TODO: include missing variables
   return (
     cluster.bmfol_0 +
     cluster.bmfol_2 +
