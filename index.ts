@@ -90,6 +90,7 @@ app.post('/process', async (req, res) => {
   try {
     const clusters: TreatedCluster[] = await db
       .table('treatedclusters')
+      .where({ treatmentid: params.treatmentid })
       .whereBetween('landing_lat', [bounds[0].latitude, bounds[1].latitude])
       .andWhereBetween('landing_lng', [bounds[0].longitude, bounds[1].longitude]);
     const results: Results = {
