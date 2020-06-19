@@ -8,8 +8,15 @@ export interface RequestParams {
   lng: number;
   radius: number;
   system: string;
+  treatmentid: number;
   teaModel: string;
   teaInputs: InputModGPO | InputModCHP | InputModGP; // | InputModHydrogen;
+}
+
+export interface Treatment {
+  id: number;
+  name: string;
+  land_use: string;
 }
 
 export interface ClusterRequestParams {

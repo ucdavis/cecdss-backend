@@ -26,7 +26,7 @@ export const getFrcsInputs = (cluster: TreatedCluster, system: string, distance:
   const frcsInputs: InputVarMod = {
     System: system,
     PartialCut: true,
-    DeliverDist: cluster.total_yarding,
+    DeliverDist: cluster.mean_yarding,
     Slope: cluster.slope,
     Elevation: cluster.center_elevation,
     CalcLoad: true,
