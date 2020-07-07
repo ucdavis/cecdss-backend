@@ -27,6 +27,7 @@ export interface ClusterRequestParams {
 export interface Results {
   lcaResults?: LCAresults;
   teaResults: OutputModGPO | OutputModCHP | OutputModGP;
+  biomassTarget: number;
   totalBiomass: number;
   totalArea: number;
   totalCombinedCost: number;
@@ -56,4 +57,5 @@ export interface ClusterErrorResult {
   biomass: number;
   area: number;
   error: string;
+  slope: number;
 }

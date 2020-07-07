@@ -89,14 +89,15 @@ app.post('/process', async (req, res) => {
 
   try {
     const clusters: TreatedCluster[] = await db
-      .table('treatedclusters')
-      .where({ treatmentid: params.treatmentid })
+      .table('butte_treatedclusters')
+      .where({ treatmentid: params.treatmentid, year: 2016 })
       .whereBetween('landing_lat', [bounds[0].latitude, bounds[1].latitude])
       .andWhereBetween('landing_lng', [bounds[0].longitude, bounds[1].longitude]);
     const results: Results = {
       teaResults: teaOutput,
       numberOfClusters: 0,
       totalBiomass: 0,
+      biomassTarget,
       totalArea: 0,
       totalCombinedCost: 0,
       totalResidueCost: 0,
@@ -272,27 +273,36 @@ export const runLca = async (inputs: LCARunParams) => {
 export const sumBiomass = (cluster: TreatedCluster) => {
   // TODO: include missing variables
   return (
-    cluster.bmfol_0 +
     cluster.bmfol_2 +
     cluster.bmfol_7 +
     cluster.bmfol_15 +
     cluster.bmfol_25 +
-    // pixel.bmfol_35 +
-    // pixel.bmfol_40 +
-    cluster.bmcwn_0 +
+    cluster.bmfol_35 +
+    cluster.bmfol_40 +
     cluster.bmcwn_2 +
     cluster.bmcwn_7 +
     cluster.bmcwn_15 +
     cluster.bmcwn_25 +
-    // pixel.bmcwn_35 +
-    // pixel.bmcwn_40 +
-    cluster.bmstm_0 +
+    cluster.bmcwn_35 +
+    cluster.bmcwn_40 +
     cluster.bmstm_2 +
     cluster.bmstm_7 +
     cluster.bmstm_15 +
-    cluster.bmstm_25
-    // + pixel.bmstm_35 +
-    // pixel.bmstm_40
+    cluster.bmstm_25 +
+    cluster.bmstm_35 +
+    cluster.bmstm_40 +
+    cluster.dbmsm_2 +
+    cluster.dbmsm_7 +
+    cluster.dbmsm_15 +
+    cluster.dbmsm_25 +
+    cluster.dbmsm_35 +
+    cluster.dbmsm_40 +
+    cluster.dbmcn_2 +
+    cluster.dbmcn_7 +
+    cluster.dbmcn_15 +
+    cluster.dbmcn_25 +
+    cluster.dbmcn_35 +
+    cluster.dbmcn_40
   );
 };
 
