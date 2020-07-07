@@ -152,7 +152,8 @@ app.post('/process', async (req, res) => {
           cluster_no: cluster.cluster_no,
           area: cluster.area,
           biomass: clusterBiomass,
-          error: err.message
+          error: err.message,
+          slope: cluster.slope
         });
       }
     }
