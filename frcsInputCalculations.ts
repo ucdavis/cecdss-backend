@@ -52,7 +52,8 @@ export const getFrcsInputs = (cluster: TreatedCluster, system: string, distance:
     TreeVolLLT: volumeLLT / totalRemovalsLLT,
     // TODO: pull from user input
     DieselFuelPrice: 3.882,
-    MoistureContent: 50
+    MoistureContent: 50,
+    ChipAll: false
   };
   return frcsInputs;
 };
