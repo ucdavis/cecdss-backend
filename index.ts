@@ -15,11 +15,6 @@ import fetch from 'isomorphic-fetch';
 import knex from 'knex';
 import OSRM from 'osrm';
 import pg from 'pg';
-import {
-  ElectricalFuelBaseYearModCHPClass,
-  ElectricalFuelBaseYearModGPClass,
-  ElectricalFuelBaseYearModGPOClass
-} from './models/classes';
 import { LCAresults, LCARunParams } from './models/lcaModels';
 import { TreatedCluster } from './models/treatedcluster';
 import { ClusterRequestParams, ClusterResult, RequestParams, Results } from './models/types';
@@ -80,28 +75,13 @@ app.post('/process', async (req, res) => {
   }
 
   // TODO: use separate TEA endpoint just to get biomass target
-  const teaOutput: any = await getTeaOutputs(params.teaModel, params.teaInputs);
+  const teaOutput: OutputModGPO | OutputModCHP | OutputModGP = await getTeaOutputs(
+    params.teaModel,
+    params.teaInputs
+  );
   console.log('TEA OUTPUT:');
   console.log(teaOutput);
-  let biomassTarget = 0;
-  if (
-    params.teaModel === 'GPO' ||
-    params.teaModel === 'CHP' // &&
-    // (teaOutput.ElectricalAndFuelBaseYear instanceof ElectricalFuelBaseYearModGPOClass ||
-    //   teaOutput.ElectricalAndFuelBaseYear instanceof ElectricalFuelBaseYearModCHPClass)
-  ) {
-    console.log('GPO or CHP');
-    biomassTarget = teaOutput.ElectricalAndFuelBaseYear.AnnualFuelConsumption; // dry metric tons / year
-  } else if (
-    params.teaModel === 'GP' // &&
-    // teaOutput.ElectricalAndFuelBaseYear instanceof ElectricalFuelBaseYearModGPClass
-  ) {
-    console.log('GP');
-    biomassTarget = teaOutput.ElectricalAndFuelBaseYear.AnnualBiomassConsumptionDryMass;
-  } else {
-    console.log('what');
-  }
-  console.log('biomassTarget: ' + biomassTarget);
+  const biomassTarget = teaOutput.ElectricalAndFuelBaseYear.BiomassTarget;
   const bounds = getBoundsOfDistance(
     { latitude: params.lat, longitude: params.lng },
     params.radius * 1000 // km to m
@@ -109,13 +89,15 @@ app.post('/process', async (req, res) => {
 
   try {
     const clusters: TreatedCluster[] = await db
-      .table('treatedclusters')
+      .table('butte_treatedclusters')
+      .where({ treatmentid: params.treatmentid, year: 2016 })
       .whereBetween('landing_lat', [bounds[0].latitude, bounds[1].latitude])
       .andWhereBetween('landing_lng', [bounds[0].longitude, bounds[1].longitude]);
     const results: Results = {
       teaResults: teaOutput,
       numberOfClusters: 0,
       totalBiomass: 0,
+      biomassTarget,
       totalArea: 0,
       totalCombinedCost: 0,
       totalResidueCost: 0,
@@ -170,7 +152,8 @@ app.post('/process', async (req, res) => {
           cluster_no: cluster.cluster_no,
           area: cluster.area,
           biomass: clusterBiomass,
-          error: err.message
+          error: err.message,
+          slope: cluster.slope
         });
       }
     }
@@ -229,11 +212,15 @@ app.post('/process', async (req, res) => {
     console.log(results);
     const lcaInputs: LCARunParams = {
       technology: params.teaModel,
-      dieselPerKwhElectricity: lcaTotals.totalDiesel / params.teaInputs.NetElectricalCapacity,
-      gasolinePerKwhElectricity: lcaTotals.totalGasoline / params.teaInputs.NetElectricalCapacity,
-      jetFuelPerKwhElectricity: lcaTotals.totalJetFuel / params.teaInputs.NetElectricalCapacity,
+      dieselPerKwhElectricity:
+        lcaTotals.totalDiesel / params.teaInputs.ElectricalFuelBaseYear.NetElectricalCapacity,
+      gasolinePerKwhElectricity:
+        lcaTotals.totalGasoline / params.teaInputs.ElectricalFuelBaseYear.NetElectricalCapacity,
+      jetFuelPerKwhElectricity:
+        lcaTotals.totalJetFuel / params.teaInputs.ElectricalFuelBaseYear.NetElectricalCapacity,
       transportationDistance: lcaTotals.totalTransportationDistance,
-      biomassPerKwhElectricity: results.totalBiomass / params.teaInputs.NetElectricalCapacity
+      biomassPerKwhElectricity:
+        results.totalBiomass / params.teaInputs.ElectricalFuelBaseYear.NetElectricalCapacity
     };
     const lca = await runLca(lcaInputs);
     console.log(lca);
@@ -241,15 +228,11 @@ app.post('/process', async (req, res) => {
     // $ / dry metric ton
     const fuelCost =
       (results.totalResidueCost + results.totalTransportationCost) / results.totalBiomass;
-    const teaInputs2: any = { ...params.teaInputs };
-    // TODO: clean up w/ better tea models
-    if (params.teaModel === 'GP') {
-      teaInputs2.BiomassFuelCost = fuelCost;
-    } else {
-      teaInputs2.FuelCost = fuelCost;
-    }
-    const teaOutput2: any = await getTeaOutputs(params.teaModel, teaInputs2);
-    results.teaResults = teaOutput2;
+    const updatedTeaInputs: any = { ...params.teaInputs }; // copy original tea inputs
+    updatedTeaInputs.BiomassFuelCost = fuelCost; // but update using fuel cost calculated from frcs results
+
+    const updatedTeaOutputs: any = await getTeaOutputs(params.teaModel, updatedTeaInputs);
+    results.teaResults = updatedTeaOutputs;
 
     res.status(200).json(results);
   } catch (e) {
@@ -289,28 +272,38 @@ export const runLca = async (inputs: LCARunParams) => {
 };
 
 export const sumBiomass = (cluster: TreatedCluster) => {
+  // TODO: include missing variables
   return (
-    cluster.bmfol_0 +
     cluster.bmfol_2 +
     cluster.bmfol_7 +
     cluster.bmfol_15 +
     cluster.bmfol_25 +
-    // pixel.bmfol_35 +
-    // pixel.bmfol_40 +
-    cluster.bmcwn_0 +
+    cluster.bmfol_35 +
+    cluster.bmfol_40 +
     cluster.bmcwn_2 +
     cluster.bmcwn_7 +
     cluster.bmcwn_15 +
     cluster.bmcwn_25 +
-    // pixel.bmcwn_35 +
-    // pixel.bmcwn_40 +
-    cluster.bmstm_0 +
+    cluster.bmcwn_35 +
+    cluster.bmcwn_40 +
     cluster.bmstm_2 +
     cluster.bmstm_7 +
     cluster.bmstm_15 +
-    cluster.bmstm_25
-    // + pixel.bmstm_35 +
-    // pixel.bmstm_40
+    cluster.bmstm_25 +
+    cluster.bmstm_35 +
+    cluster.bmstm_40 +
+    cluster.dbmsm_2 +
+    cluster.dbmsm_7 +
+    cluster.dbmsm_15 +
+    cluster.dbmsm_25 +
+    cluster.dbmsm_35 +
+    cluster.dbmsm_40 +
+    cluster.dbmcn_2 +
+    cluster.dbmcn_7 +
+    cluster.dbmcn_15 +
+    cluster.dbmcn_25 +
+    cluster.dbmcn_35 +
+    cluster.dbmcn_40
   );
 };
 

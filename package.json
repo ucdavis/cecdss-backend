@@ -17,8 +17,8 @@
   },
   "dependencies": {
     "@types/cors": "^2.8.6",
-    "@ucdavis/frcs": "^1.0.9",
-    "@ucdavis/tea": "^1.0.5",
+    "@ucdavis/frcs": "^1.0.11",
+    "@ucdavis/tea": "^1.0.8",
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",

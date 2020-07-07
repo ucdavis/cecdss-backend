@@ -26,7 +26,7 @@ export const getFrcsInputs = (cluster: TreatedCluster, system: string, distance:
   const frcsInputs: InputVarMod = {
     System: system,
     PartialCut: true,
-    DeliverDist: cluster.total_yarding,
+    DeliverDist: cluster.mean_yarding,
     Slope: cluster.slope,
     Elevation: cluster.center_elevation,
     CalcLoad: true,
@@ -52,7 +52,8 @@ export const getFrcsInputs = (cluster: TreatedCluster, system: string, distance:
     TreeVolLLT: volumeLLT / totalRemovalsLLT,
     // TODO: pull from user input
     DieselFuelPrice: 3.882,
-    MoistureContent: 50
+    MoistureContent: 50,
+    ChipAll: false
   };
   return frcsInputs;
 };
