@@ -91,16 +91,21 @@ app.post('/process', async (req, res) => {
   );
   const biomassTarget = teaOutput.ElectricalAndFuelBaseYear.BiomassTarget;
   console.log(`biomassTarget: ${biomassTarget}, processing...`);
+  const bounds = getBoundsOfDistance(
+    { latitude: params.lat, longitude: params.lng },
+    params.radius * 1000 // km to m
+  );
 
   for (let index = 0; index < years.length; index++) {
     const result = await processClustersForYear(
       params,
       teaOutput,
       biomassTarget,
+      bounds,
       years[index],
       results.clusterIds
     ).then(yearResult => {
-      console.log(`year: ${years[index]} results`);
+      console.log(`year: ${years[index]}, clusterNos: ${yearResult.clusterNumbers}`);
       // console.log(yearResult);
       results.years.push(yearResult);
       results.clusterIds.push(...yearResult.clusterNumbers);
@@ -116,21 +121,18 @@ const processClustersForYear = async (
   params: RequestParams,
   teaOutput: OutputModGPO | OutputModCHP | OutputModGP,
   biomassTarget: number,
+  bounds: any,
   year: number,
   usedIds: number[]
 ): Promise<YearlyResult> => {
   return new Promise(async (resolve, reject) => {
     console.log(`year: ${year}, usedIds: ${usedIds}`);
 
-    const bounds = getBoundsOfDistance(
-      { latitude: params.lat, longitude: params.lng },
-      params.radius * 1000 // km to m
-    );
-
     try {
       const clusters: TreatedCluster[] = await db
         .table('butte_treatedclusters')
         .where({ treatmentid: params.treatmentid, year: year })
+        .whereNotIn('cluster_no', usedIds)
         .whereBetween('landing_lat', [bounds[0].latitude, bounds[1].latitude])
         .andWhereBetween('landing_lng', [bounds[0].longitude, bounds[1].longitude]);
       const results: YearlyResult = {
@@ -143,7 +145,7 @@ const processClustersForYear = async (
         totalCombinedCost: 0,
         totalResidueCost: 0,
         totalTransportationCost: 0,
-        clusters: [],
+        // clusters: [],
         teaResults: teaOutput
       };
 
@@ -229,7 +231,7 @@ const processClustersForYear = async (
           lcaTotals.totalJetFuel += cluster.frcsResult.Residue.JetFuelPerAcre * cluster.area;
           lcaTotals.totalTransportationDistance += cluster.distance;
 
-          results.clusters.push(cluster);
+          // results.clusters.push(cluster);
           results.clusterNumbers.push(cluster.cluster_no);
           // await db.table('cluster_results_biomass_cost').insert({
           //   cluster_no: cluster.cluster_no,
@@ -247,7 +249,7 @@ const processClustersForYear = async (
           // });
         }
       }
-      results.numberOfClusters = results.clusters.length;
+      results.numberOfClusters = results.clusterNumbers.length;
       console.log('running LCA...');
       // console.log(results);
       const lcaInputs: LCARunParams = {
@@ -276,6 +278,8 @@ const processClustersForYear = async (
 
       resolve(results);
     } catch (e) {
+      console.log('ERROR!');
+      console.log(e);
       reject(e.message);
     }
   });
