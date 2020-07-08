@@ -25,6 +25,12 @@ export interface ClusterRequestParams {
 }
 
 export interface Results {
+  clusterIds: number[];
+  years: YearlyResult[];
+}
+
+export interface YearlyResult {
+  year: number;
   lcaResults?: LCAresults;
   teaResults: OutputModGPO | OutputModCHP | OutputModGP;
   totalBiomass: number;
@@ -33,9 +39,8 @@ export interface Results {
   totalResidueCost: number;
   totalTransportationCost: number;
   numberOfClusters: number;
+  clusterNumbers: number[];
   clusters: ClusterResult[];
-  skippedClusters: ClusterResult[];
-  errorClusters: ClusterErrorResult[];
 }
 
 export interface ClusterResult {
