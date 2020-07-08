@@ -114,7 +114,7 @@ app.post('/process', async (req, res) => {
 
   console.log('RESULTS:');
   console.log(results);
-  res.status(200).json(results);
+  res.status(200).json(results.years);
 });
 
 const processClustersForYear = async (
