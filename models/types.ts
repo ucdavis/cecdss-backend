@@ -9,6 +9,7 @@ export interface RequestParams {
   radius: number;
   system: string;
   treatmentid: number;
+  dieselFuelPrice: number; // $/gal
   teaModel: string;
   teaInputs: InputModGPO | InputModCHP | InputModGP; // | InputModHydrogen;
 }

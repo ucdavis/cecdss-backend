@@ -173,7 +173,9 @@ const processClustersForYear = async (
           const frcsResult: OutputVarMod = await runFrcsOnCluster(
             cluster,
             params.system,
-            distance * 0.621371 // move in distance km to miles
+            distance * 0.621371, // move in distance km to miles
+            params.dieselFuelPrice,
+            params.teaInputs.ElectricalFuelBaseYear.MoistureContent
           );
 
           clusterCosts.push({

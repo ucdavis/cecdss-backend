@@ -7,7 +7,13 @@ export const pixelAreaInAcres = 30 * 30 * metersToAcresConstant;
 // these equations come from this sheet:
 // https://ucdavis.app.box.com/file/566320916282
 
-export const getFrcsInputs = (cluster: TreatedCluster, system: string, distance: number) => {
+export const getFrcsInputs = (
+  cluster: TreatedCluster,
+  system: string,
+  distance: number,
+  dieselFuelPrice: number,
+  moistureContent: number
+) => {
   const weightCT = calcWeightCT(cluster);
   const volumeCT = calcVolumeCT(cluster);
   const removalsCT = calcRemovalsCT(cluster);
@@ -51,8 +57,8 @@ export const getFrcsInputs = (cluster: TreatedCluster, system: string, distance:
     TreeVolSLT: volumeSLT / totalRemovalsSLT,
     TreeVolLLT: volumeLLT / totalRemovalsLLT,
     // TODO: pull from user input
-    DieselFuelPrice: 3.882,
-    MoistureContent: 50,
+    DieselFuelPrice: dieselFuelPrice,
+    MoistureContent: moistureContent,
     ChipAll: false
   };
   return frcsInputs;
