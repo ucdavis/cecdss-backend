@@ -42,7 +42,8 @@ export interface YearlyResult {
   totalTransportationCost: number;
   numberOfClusters: number;
   clusterNumbers: number[];
-  // clusters: ClusterResult[];
+  clusters: ClusterResult[];
+  errorClusters: ClusterErrorResult[];
 }
 
 export interface ClusterResult {

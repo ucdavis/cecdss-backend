@@ -95,6 +95,7 @@ app.post('/process', async (req, res) => {
     { latitude: params.lat, longitude: params.lng },
     params.radius * 1000 // km to m
   );
+  console.log(JSON.stringify(bounds));
 
   for (let index = 0; index < years.length; index++) {
     const result = await processClustersForYear(
@@ -105,7 +106,7 @@ app.post('/process', async (req, res) => {
       years[index],
       results.clusterIds
     ).then(yearResult => {
-      console.log(`year: ${years[index]}, clusterNos: ${yearResult.clusterNumbers}`);
+      console.log(`year: ${years[index]}, # of clusters: ${yearResult.clusterNumbers.length}`);
       // console.log(yearResult);
       results.years.push(yearResult);
       results.clusterIds.push(...yearResult.clusterNumbers);
@@ -126,7 +127,7 @@ const processClustersForYear = async (
   usedIds: number[]
 ): Promise<YearlyResult> => {
   return new Promise(async (resolve, reject) => {
-    console.log(`year: ${year}, usedIds: ${usedIds}`);
+    // console.log(`year: ${year}, usedIds: ${usedIds}`);
 
     try {
       const clusters: TreatedCluster[] = await db
@@ -135,6 +136,7 @@ const processClustersForYear = async (
         .whereNotIn('cluster_no', usedIds)
         .whereBetween('landing_lat', [bounds[0].latitude, bounds[1].latitude])
         .andWhereBetween('landing_lng', [bounds[0].longitude, bounds[1].longitude]);
+      console.log(`number of available clusters: ${clusters.length}`);
       const results: YearlyResult = {
         year,
         clusterNumbers: [],
@@ -145,12 +147,14 @@ const processClustersForYear = async (
         totalCombinedCost: 0,
         totalResidueCost: 0,
         totalTransportationCost: 0,
-        // clusters: [],
+        clusters: [],
+        errorClusters: [],
         teaResults: teaOutput
       };
 
       const clusterCosts: ClusterResult[] = [];
 
+      console.log('generating costs for clusters...');
       // first generate costs for each cluster
       for (const cluster of clusters) {
         const routeOptions: OSRM.RouteOptions = {
@@ -161,11 +165,16 @@ const processClustersForYear = async (
           annotations: ['duration', 'distance']
         };
 
+        // currently distance is the osrm generated distance between each landing site and the facility location
         const route: any = await getRouteDistanceAndDuration(routeOptions);
         let distance = route.distance;
         distance = distance / 1000; // m to km
+        distance = distance * 0.5; // to compensate for the distance being too high, multiply by factor of 0.5
+        // TODO: remove factor mult when we update distance calculation
 
         const duration = route.duration / 3600; // seconds to hours
+        // TODO: update how we are calculating transportation cost, in reality a truck is not taking 1 trip per cluster
+        // could be multiple trips, depending on load
         const transportationCostPerGT = getTransportationCost(distance, duration);
         const clusterBiomass = sumBiomass(cluster);
         const transportationCostTotal = transportationCostPerGT * clusterBiomass;
@@ -192,22 +201,26 @@ const processClustersForYear = async (
           });
         } catch (err) {
           // swallow errors frcs throws and push the error message instead
-          // results.errorClusters.push({
-          //   cluster_no: cluster.cluster_no,
-          //   area: cluster.area,
-          //   biomass: clusterBiomass,
-          //   error: err.message
-          // });
+          results.errorClusters.push({
+            cluster_no: cluster.cluster_no,
+            area: cluster.area,
+            biomass: clusterBiomass,
+            error: err.message,
+            slope: cluster.slope
+          });
         }
       }
+      console.log('sorting clusters...');
       clusterCosts.sort((a, b) => {
         return (
           (a.residueCost + a.transportationCost) / a.biomass -
           (b.residueCost + b.transportationCost) / b.biomass
         );
       });
+
+      // sort by distance so that for every year, we select clusters that are close to each other
       // clusterCosts.sort((a, b) => {
-      //   return a.distance - b.distance;
+      //   return a.distance * 0.5 - b.distance * 0.5;
       // });
 
       const lcaTotals = {
@@ -217,6 +230,7 @@ const processClustersForYear = async (
         totalTransportationDistance: 0
       };
 
+      console.log('selecting clusters to use...');
       for (const cluster of clusterCosts) {
         if (results.totalBiomass >= biomassTarget) {
           // results.skippedClusters.push(cluster); // keeping for testing for now
@@ -233,8 +247,9 @@ const processClustersForYear = async (
           lcaTotals.totalJetFuel += cluster.frcsResult.Residue.JetFuelPerAcre * cluster.area;
           lcaTotals.totalTransportationDistance += cluster.distance;
 
-          // results.clusters.push(cluster);
+          results.clusters.push(cluster);
           results.clusterNumbers.push(cluster.cluster_no);
+
           // await db.table('cluster_results_biomass_cost').insert({
           //   cluster_no: cluster.cluster_no,
           //   biomass: cluster.biomass,
@@ -252,7 +267,6 @@ const processClustersForYear = async (
         }
       }
       results.numberOfClusters = results.clusterNumbers.length;
-      console.log('running LCA...');
       // console.log(results);
       const lcaInputs: LCARunParams = {
         technology: params.teaModel,
@@ -266,15 +280,17 @@ const processClustersForYear = async (
         biomassPerKwhElectricity:
           results.totalBiomass / params.teaInputs.ElectricalFuelBaseYear.NetElectricalCapacity
       };
-      const lca = await runLca(lcaInputs);
+      console.log('running LCA...');
+      // const lca = await runLca(lcaInputs);
       // console.log(lca);
-      results.lcaResults = lca;
+      // results.lcaResults = lca;
       // $ / dry metric ton
       const fuelCost =
         (results.totalResidueCost + results.totalTransportationCost) / results.totalBiomass;
       const updatedTeaInputs: any = { ...params.teaInputs }; // copy original tea inputs
       updatedTeaInputs.BiomassFuelCost = fuelCost; // but update using fuel cost calculated from frcs results
 
+      console.log('updating tea outputs...');
       const updatedTeaOutputs: any = await getTeaOutputs(params.teaModel, updatedTeaInputs);
       results.teaResults = updatedTeaOutputs;
 
@@ -319,7 +335,6 @@ export const runLca = async (inputs: LCARunParams) => {
 };
 
 export const sumBiomass = (cluster: TreatedCluster) => {
-  // TODO: include missing variables
   return (
     cluster.bmfol_2 +
     cluster.bmfol_7 +
