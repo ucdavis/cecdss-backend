@@ -84,7 +84,8 @@ const calcWeightCT = (cluster: TreatedCluster) => {
 };
 
 const calcVolumeCT = (cluster: TreatedCluster) => {
-  return cluster.vol_2 + cluster.vol_7;
+  // return cluster.vol_2 + cluster.vol_7;
+  return calculateVolume(cluster, 2) + calculateVolume(cluster, 7);
 };
 
 const calcRemovalsCT = (cluster: TreatedCluster) => {
@@ -110,7 +111,8 @@ const calcWeightSLT = (cluster: TreatedCluster) => {
 };
 
 const calcVolumeSLT = (cluster: TreatedCluster) => {
-  return cluster.vol_15;
+  // return cluster.vol_15;
+  return calculateVolume(cluster, 15);
 };
 
 const calcRemovalsSLT = (cluster: TreatedCluster) => {
@@ -143,7 +145,8 @@ const calcWeightLLT = (cluster: TreatedCluster) => {
 };
 
 const calcVolumeLLT = (cluster: TreatedCluster) => {
-  return cluster.vol_25 + cluster.vol_35 + cluster.vol_40;
+  // return cluster.vol_25 + cluster.vol_35 + cluster.vol_40;
+  return calculateVolume(cluster, 25);
 };
 
 const calcRemovalsLLT = (cluster: TreatedCluster) => {
@@ -168,4 +171,33 @@ const calcTotalRemovalsLLT = (cluster: TreatedCluster) => {
       cluster.tpa_40 +
       cluster.sng_40)
   );
+};
+
+const calculateVolume = (cluster: TreatedCluster, i: number) => {
+  let vol = 0;
+  let avgDBH = 0;
+  switch (i) {
+    // for dbh < 5, use equation from here: https://ucdavis.app.box.com/file/602500273957
+    case 2:
+      avgDBH = 3;
+      vol = cluster.tpa_2 * pixelAreaInAcres * (avgDBH * 1.7925);
+      break;
+    // otherwise use this equation https://ucdavis.app.box.com/file/566320916282
+    case 7:
+      avgDBH = 7.5;
+      // trees/acre in cluster * pixel area * cubic feet per tree
+      vol = cluster.tpa_7 * pixelAreaInAcres * (avgDBH * avgDBH * 0.216 - 3.675);
+      break;
+    case 15:
+      avgDBH = 15;
+      // trees/acre in cluster * pixel area * cubic feet per tree
+      vol = cluster.tpa_15 * pixelAreaInAcres * (avgDBH * avgDBH * 0.216 - 3.675);
+      break;
+    case 25:
+      avgDBH = 25;
+      // trees/acre in cluster * pixel area * cubic feet per tree
+      vol = cluster.tpa_25 * pixelAreaInAcres * (avgDBH * avgDBH * 0.216 - 3.675);
+      break;
+  }
+  return vol;
 };
