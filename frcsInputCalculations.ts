@@ -101,7 +101,11 @@ export const getFrcsInputsTest = (
   const frcsInputs: InputVarMod = {
     System: system,
     PartialCut: fixedClusterUnits.treatmentid === 1 ? false : true, // partial cut = false only on clear cut
-    DeliverDist: fixedClusterUnits.mean_yarding,
+    DeliverDist:
+      system === 'Helicopter Manual WT' || system === 'Helicopter CTL'
+        ? fixedClusterUnits.mean_yarding // if system is helicopter, use calculated mean_yarding
+        : fixedClusterUnits.mean_yarding * // otherwise convert straight line distance to distance along a slope
+          Math.sqrt(1 + Math.pow(fixedClusterUnits.slope / 100, 2)), // divide by 100 since slope is in %
     Slope: !!fixedClusterUnits.slope ? fixedClusterUnits.slope : 0,
     Elevation: !!fixedClusterUnits.center_elevation ? fixedClusterUnits.center_elevation : 0,
     CalcLoad: true, // always true
