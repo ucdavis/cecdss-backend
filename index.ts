@@ -15,6 +15,7 @@ import fetch from 'isomorphic-fetch';
 import knex from 'knex';
 import OSRM from 'osrm';
 import pg from 'pg';
+import { getFrcsInputs, getFrcsInputsTest } from './frcsInputCalculations';
 import { LCAresults, LCARunParams } from './models/lcaModels';
 import { TreatedCluster } from './models/treatedcluster';
 import {
@@ -24,7 +25,7 @@ import {
   Results,
   YearlyResult
 } from './models/types';
-import { runFrcsOnCluster } from './runFrcs';
+import { runFrcsOnCluster, testRunFrcsOnCluster } from './runFrcs';
 import { getTransportationCost } from './transportation';
 
 const PG_DECIMAL_OID = 1700;
@@ -56,6 +57,148 @@ console.log('connected to osrm');
 
 // allow cors
 app.use(cors());
+
+app.post('/testCluster', async (req, res) => {
+  console.log('pulling cluster from db...');
+  const params: RequestParams = req.body;
+  const clusters: TreatedCluster[] = await db
+    .table('butte_treatedclusters_farm')
+    .where({ treatmentid: params.treatmentid, year: 2016, cluster_no: 42504 });
+  const cluster = clusters[0];
+
+  const routeOptions: OSRM.RouteOptions = {
+    coordinates: [
+      [params.lng, params.lat],
+      [cluster.landing_lng, cluster.landing_lat]
+    ],
+    annotations: ['duration', 'distance']
+  };
+
+  const distance = 0.5; // km
+  const duration = 0.5; // route.duration / 3600; // seconds to hours
+  // TODO: update how we are calculating transportation cost, in reality a truck is not taking 1 trip per cluster
+  // could be multiple trips, depending on load
+  const transportationCostPerGT = getTransportationCost(distance, duration, params.dieselFuelPrice);
+
+  console.log('running frcs...');
+  let clusterResults = {};
+  try {
+    const { frcsInputs, frcsResult } = await testRunFrcsOnCluster(
+      cluster,
+      params.system,
+      distance * 0.621371, // move in distance km to miles
+      params.dieselFuelPrice,
+      params.teaInputs.ElectricalFuelBaseYear.MoistureContent
+    );
+    const clusterBiomass = sumBiomass(cluster);
+    const residueBiomass = frcsResult.Residue.WeightPerAcre * cluster.area;
+    const transportationCostTotal = transportationCostPerGT * residueBiomass;
+
+    clusterResults = {
+      cluster_no: cluster.cluster_no,
+      cluster: cluster,
+      area: cluster.area,
+      residueBiomass: residueBiomass,
+      totalBiomass: clusterBiomass,
+      distance: distance,
+      combinedCost: frcsResult.Total.CostPerAcre * cluster.area,
+      residueCost: frcsResult.Residue.CostPerAcre * cluster.area,
+      transportationCost: transportationCostTotal,
+      frcsInputs: frcsInputs,
+      frcsResult: frcsResult,
+      lat: cluster.landing_lat,
+      lng: cluster.landing_lng
+    };
+  } catch (e) {
+    const {
+      frcsInputs,
+      boleWeightCT,
+      residueWeightCT,
+      residueFractionCT,
+      volumeCT,
+      removalsCT,
+      boleWeightSLT,
+      residueWeightSLT,
+      residueFractionSLT,
+      volumeSLT,
+      removalsSLT,
+      boleWeightLLT,
+      residueWeightLLT,
+      residueFractionLLT,
+      volumeLLT,
+      removalsLLT
+    } = getFrcsInputsTest(
+      cluster,
+      params.system,
+      distance * 0.621371, // move in distance km to miles
+      params.dieselFuelPrice,
+      params.teaInputs.ElectricalFuelBaseYear.MoistureContent
+    );
+
+    clusterResults = {
+      cluster_no: cluster.cluster_no,
+      cluster: cluster,
+      area: cluster.area,
+      distance: distance,
+      lat: cluster.landing_lat,
+      lng: cluster.landing_lng,
+      frcsInputs: frcsInputs,
+      boleWeightCT,
+      residueWeightCT,
+      residueFractionCT,
+      volumeCT,
+      removalsCT,
+      boleWeightSLT,
+      residueWeightSLT,
+      residueFractionSLT,
+      volumeSLT,
+      removalsSLT,
+      boleWeightLLT,
+      residueWeightLLT,
+      residueFractionLLT,
+      volumeLLT,
+      removalsLLT,
+      e: e
+    };
+  } finally {
+    res.status(200).json(clusterResults);
+  }
+});
+
+export const sumBiomass = (pixel: TreatedCluster) => {
+  return (
+    pixel.bmfol_2 +
+    pixel.bmfol_7 +
+    pixel.bmfol_15 +
+    pixel.bmfol_25 +
+    pixel.bmfol_35 +
+    pixel.bmfol_40 +
+    pixel.bmcwn_2 +
+    pixel.bmcwn_7 +
+    pixel.bmcwn_15 +
+    pixel.bmcwn_25 +
+    pixel.bmcwn_35 +
+    pixel.bmcwn_40 +
+    pixel.bmstm_2 +
+    pixel.bmstm_7 +
+    pixel.bmstm_15 +
+    pixel.bmstm_25 +
+    pixel.bmstm_35 +
+    pixel.bmstm_40 +
+    pixel.dbmsm_2 +
+    pixel.dbmsm_7 +
+    pixel.dbmsm_15 +
+    pixel.dbmsm_25 +
+    pixel.dbmsm_35 +
+    pixel.dbmsm_40 +
+    pixel.dbmcn_2 +
+    pixel.dbmcn_7 +
+    pixel.dbmcn_15 +
+    pixel.dbmcn_25 +
+    pixel.dbmcn_35 +
+    pixel.dbmcn_40
+  );
+};
 
 app.post('/process', async (req, res) => {
   const params: RequestParams = req.body;
@@ -95,7 +238,6 @@ app.post('/process', async (req, res) => {
     { latitude: params.lat, longitude: params.lng },
     params.radius * 1000 // km to m
   );
-  console.log(JSON.stringify(bounds));
 
   for (let index = 0; index < years.length; index++) {
     const result = await processClustersForYear(
@@ -131,7 +273,7 @@ const processClustersForYear = async (
 
     try {
       const clusters: TreatedCluster[] = await db
-        .table('butte_treatedclusters')
+        .table('butte_treatedclusters_farm')
         .where({ treatmentid: params.treatmentid, year: year })
         .whereNotIn('cluster_no', usedIds)
         .whereBetween('landing_lat', [bounds[0].latitude, bounds[1].latitude])
@@ -154,7 +296,7 @@ const processClustersForYear = async (
 
       const clusterCosts: ClusterResult[] = [];
 
-      console.log('generating costs for clusters...');
+      console.log('calculating distances for clusters...');
       // first generate costs for each cluster
       for (const cluster of clusters) {
         const routeOptions: OSRM.RouteOptions = {
@@ -247,23 +389,8 @@ const processClustersForYear = async (
           lcaTotals.totalJetFuel += cluster.frcsResult.Residue.JetFuelPerAcre * cluster.area;
           lcaTotals.totalTransportationDistance += cluster.distance;
 
-          results.clusters.push(cluster);
+          // results.clusters.push(cluster);
           results.clusterNumbers.push(cluster.cluster_no);
-
-          // await db.table('cluster_results_biomass_cost').insert({
-          //   cluster_no: cluster.cluster_no,
-          //   biomass: cluster.biomass,
-          //   totalcost: cluster.totalCost,
-          //   area: cluster.area,
-          //   distance: cluster.distance,
-          //   harvestcost: cluster.harvestCost,
-          //   transportationcost: cluster.transportationCost,
-          //   residuewt: cluster.frcsResult.Residue.ResidueWt,
-          //   residuepergt: cluster.frcsResult.Residue.ResiduePerGT,
-          //   residueperacre: cluster.frcsResult.Residue.ResiduePerAcre,
-          //   lat: cluster.lat,
-          //   lng: cluster.lng
-          // });
         }
       }
       results.numberOfClusters = results.clusterNumbers.length;
@@ -332,41 +459,6 @@ export const runLca = async (inputs: LCARunParams) => {
     }
   ).then(res => res.json());
   return results;
-};
-
-export const sumBiomass = (cluster: TreatedCluster) => {
-  return (
-    cluster.bmfol_2 +
-    cluster.bmfol_7 +
-    cluster.bmfol_15 +
-    cluster.bmfol_25 +
-    cluster.bmfol_35 +
-    cluster.bmfol_40 +
-    cluster.bmcwn_2 +
-    cluster.bmcwn_7 +
-    cluster.bmcwn_15 +
-    cluster.bmcwn_25 +
-    cluster.bmcwn_35 +
-    cluster.bmcwn_40 +
-    cluster.bmstm_2 +
-    cluster.bmstm_7 +
-    cluster.bmstm_15 +
-    cluster.bmstm_25 +
-    cluster.bmstm_35 +
-    cluster.bmstm_40 +
-    cluster.dbmsm_2 +
-    cluster.dbmsm_7 +
-    cluster.dbmsm_15 +
-    cluster.dbmsm_25 +
-    cluster.dbmsm_35 +
-    cluster.dbmsm_40 +
-    cluster.dbmcn_2 +
-    cluster.dbmcn_7 +
-    cluster.dbmcn_15 +
-    cluster.dbmcn_25 +
-    cluster.dbmcn_35 +
-    cluster.dbmcn_40
-  );
 };
 
 const getTeaOutputs = async (type: string, inputs: any) => {

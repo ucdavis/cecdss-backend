@@ -15,3 +15,16 @@ export const runFrcsOnCluster = async (
   const clusterFrcsOutput = runFrcs(frcsInputs);
   return clusterFrcsOutput;
 };
+
+export const testRunFrcsOnCluster = async (
+  cluster: TreatedCluster,
+  system: string,
+  distance: number,
+  dieselFuelPrice: number,
+  moistureContent: number
+) => {
+  const frcsInputs = getFrcsInputs(cluster, system, distance, dieselFuelPrice, moistureContent);
+  console.log(JSON.stringify(frcsInputs));
+  const frcsResult = runFrcs(frcsInputs);
+  return { frcsInputs, frcsResult };
+};
