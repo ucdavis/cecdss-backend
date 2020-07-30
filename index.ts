@@ -175,9 +175,12 @@ const processClustersForYear = async (
         const duration = route.duration / 3600; // seconds to hours
         // TODO: update how we are calculating transportation cost, in reality a truck is not taking 1 trip per cluster
         // could be multiple trips, depending on load
-        const transportationCostPerGT = getTransportationCost(distance, duration);
-        const clusterBiomass = sumBiomass(cluster);
-        const transportationCostTotal = transportationCostPerGT * clusterBiomass;
+        const transportationCostPerGT = getTransportationCost(
+          distance,
+          duration,
+          params.dieselFuelPrice
+        );
+
         try {
           const frcsResult: OutputVarMod = await runFrcsOnCluster(
             cluster,
@@ -187,10 +190,14 @@ const processClustersForYear = async (
             params.teaInputs.ElectricalFuelBaseYear.MoistureContent
           );
 
+          // use frcs calculated available feedstock
+          const clusterBiomass = frcsResult.Residue.WeightPerAcre * cluster.area;
+          const transportationCostTotal = transportationCostPerGT * clusterBiomass;
+
           clusterCosts.push({
             cluster_no: cluster.cluster_no,
             area: cluster.area,
-            biomass: clusterBiomass, // TODO: maybe just use residue biomass
+            biomass: clusterBiomass,
             distance: distance,
             combinedCost: frcsResult.Total.CostPerAcre * cluster.area,
             residueCost: frcsResult.Residue.CostPerAcre * cluster.area,
@@ -204,24 +211,17 @@ const processClustersForYear = async (
           results.errorClusters.push({
             cluster_no: cluster.cluster_no,
             area: cluster.area,
-            biomass: clusterBiomass,
+            biomass: 0,
             error: err.message,
             slope: cluster.slope
           });
         }
       }
       console.log('sorting clusters...');
-      clusterCosts.sort((a, b) => {
-        return (
-          (a.residueCost + a.transportationCost) / a.biomass -
-          (b.residueCost + b.transportationCost) / b.biomass
-        );
-      });
-
       // sort by distance so that for every year, we select clusters that are close to each other
-      // clusterCosts.sort((a, b) => {
-      //   return a.distance * 0.5 - b.distance * 0.5;
-      // });
+      clusterCosts.sort((a, b) => {
+        return a.distance - b.distance;
+      });
 
       const lcaTotals = {
         totalDiesel: 0,
