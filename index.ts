@@ -377,14 +377,14 @@ const processClustersForYear = async (
           lcaTotals.totalGasoline / params.teaInputs.ElectricalFuelBaseYear.NetElectricalCapacity,
         jetFuelPerKwhElectricity:
           lcaTotals.totalJetFuel / params.teaInputs.ElectricalFuelBaseYear.NetElectricalCapacity,
-        transportationDistance: lcaTotals.totalTransportationDistance,
-        biomassPerKwhElectricity:
-          results.totalBiomass / params.teaInputs.ElectricalFuelBaseYear.NetElectricalCapacity
+        transportationDistance:
+          lcaTotals.totalTransportationDistance /
+          params.teaInputs.ElectricalFuelBaseYear.NetElectricalCapacity
       };
       console.log('running LCA...');
-      // const lca = await runLca(lcaInputs);
-      // console.log(lca);
-      // results.lcaResults = lca;
+      const lca = await runLca(lcaInputs);
+      console.log(lca);
+      results.lcaResults = lca;
       // $ / dry metric ton
       const fuelCost =
         (results.totalResidueCost + results.totalTransportationCost) / results.totalBiomass;
@@ -536,7 +536,7 @@ export const runLca = async (inputs: LCARunParams) => {
        ${inputs.technology}&diesel=${inputs.dieselPerKwhElectricity}\
        &gasoline=${inputs.gasolinePerKwhElectricity}\
        &jetfuel=${inputs.jetFuelPerKwhElectricity}\
-       &distance=${inputs.transportationDistance}&biomass=${inputs.biomassPerKwhElectricity}`,
+       &distance=${inputs.transportationDistance}`,
     {
       mode: 'cors',
       method: 'GET',
