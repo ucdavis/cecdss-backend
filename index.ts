@@ -65,7 +65,7 @@ app.post('/testCluster', async (req, res) => {
   const params: RequestParams = req.body;
   const clusters: TreatedCluster[] = await db
     .table('treatedclusters')
-    .where({ treatmentid: params.treatmentid, year: 2016, cluster_no: 42504 });
+    .where({ treatmentid: params.treatmentid, year: 2016, cluster_no: 35611 });
   const cluster = clusters[0];
 
   const routeOptions: OSRM.RouteOptions = {
@@ -85,7 +85,25 @@ app.post('/testCluster', async (req, res) => {
   console.log('running frcs...');
   let clusterResults = {};
   try {
-    const { frcsInputs, frcsResult } = await testRunFrcsOnCluster(
+    const {
+      frcsInputs,
+      boleWeightCT,
+      residueWeightCT,
+      residueFractionCT,
+      volumeCT,
+      removalsCT,
+      boleWeightSLT,
+      residueWeightSLT,
+      residueFractionSLT,
+      volumeSLT,
+      removalsSLT,
+      boleWeightLLT,
+      residueWeightLLT,
+      residueFractionLLT,
+      volumeLLT,
+      removalsLLT,
+      frcsResult
+    } = await testRunFrcsOnCluster(
       cluster,
       params.system,
       distance * 0.621371, // move in distance km to miles
@@ -106,7 +124,24 @@ app.post('/testCluster', async (req, res) => {
       combinedCost: frcsResult.Total.CostPerAcre * cluster.area,
       residueCost: frcsResult.Residue.CostPerAcre * cluster.area,
       transportationCost: transportationCostTotal,
-      frcsInputs: frcsInputs,
+      frcsInputs: {
+        boleWeightCT,
+        residueWeightCT,
+        residueFractionCT,
+        volumeCT,
+        removalsCT,
+        boleWeightSLT,
+        residueWeightSLT,
+        residueFractionSLT,
+        volumeSLT,
+        removalsSLT,
+        boleWeightLLT,
+        residueWeightLLT,
+        residueFractionLLT,
+        volumeLLT,
+        removalsLLT,
+        frcsInputs
+      },
       frcsResult: frcsResult,
       lat: cluster.landing_lat,
       lng: cluster.landing_lng
@@ -452,6 +487,18 @@ const selectClusters = async (
           lcaTotals.totalJetFuel += frcsResult.Residue.JetFuelPerAcre * cluster.area;
           lcaTotals.totalTransportationDistance += distance;
 
+          results.clusters.push({
+            cluster_no: cluster.cluster_no,
+            area: cluster.area,
+            biomass: clusterBiomass,
+            distance: distance,
+            combinedCost: frcsResult.Total.CostPerAcre * cluster.area,
+            residueCost: frcsResult.Residue.CostPerAcre * cluster.area,
+            transportationCost: transportationCostTotal,
+            frcsResult: frcsResult,
+            lat: cluster.landing_lat,
+            lng: cluster.landing_lng
+          });
           results.clusterNumbers.push(cluster.cluster_no);
         } catch (err) {
           // swallow errors frcs throws and push the error message instead

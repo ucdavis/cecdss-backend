@@ -1,5 +1,5 @@
 import { runFrcs } from '@ucdavis/frcs';
-import { getFrcsInputs } from './frcsInputCalculations';
+import { getFrcsInputs, getFrcsInputsTest } from './frcsInputCalculations';
 import { TreatedCluster } from './models/treatedcluster';
 
 export const runFrcsOnClusters = async (clusters: TreatedCluster[]) => {};
@@ -23,8 +23,43 @@ export const testRunFrcsOnCluster = async (
   dieselFuelPrice: number,
   moistureContent: number
 ) => {
-  const frcsInputs = getFrcsInputs(cluster, system, distance, dieselFuelPrice, moistureContent);
+  const {
+    frcsInputs,
+    boleWeightCT,
+    residueWeightCT,
+    residueFractionCT,
+    volumeCT,
+    removalsCT,
+    boleWeightSLT,
+    residueWeightSLT,
+    residueFractionSLT,
+    volumeSLT,
+    removalsSLT,
+    boleWeightLLT,
+    residueWeightLLT,
+    residueFractionLLT,
+    volumeLLT,
+    removalsLLT
+  } = getFrcsInputsTest(cluster, system, distance, dieselFuelPrice, moistureContent);
   console.log(JSON.stringify(frcsInputs));
   const frcsResult = runFrcs(frcsInputs);
-  return { frcsInputs, frcsResult };
+  return {
+    frcsInputs,
+    boleWeightCT,
+    residueWeightCT,
+    residueFractionCT,
+    volumeCT,
+    removalsCT,
+    boleWeightSLT,
+    residueWeightSLT,
+    residueFractionSLT,
+    volumeSLT,
+    removalsSLT,
+    boleWeightLLT,
+    residueWeightLLT,
+    residueFractionLLT,
+    volumeLLT,
+    removalsLLT,
+    frcsResult
+  };
 };
