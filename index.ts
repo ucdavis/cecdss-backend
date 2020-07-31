@@ -10,7 +10,7 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
-import { getBoundsOfDistance } from 'geolib';
+import { getBoundsOfDistance, getDistance } from 'geolib';
 import fetch from 'isomorphic-fetch';
 import knex from 'knex';
 import OSRM from 'osrm';
@@ -19,8 +19,10 @@ import { getFrcsInputs, getFrcsInputsTest } from './frcsInputCalculations';
 import { LCAresults, LCARunParams } from './models/lcaModels';
 import { TreatedCluster } from './models/treatedcluster';
 import {
+  Bounds,
   ClusterRequestParams,
   ClusterResult,
+  LCATotals,
   RequestParams,
   Results,
   YearlyResult
@@ -62,7 +64,7 @@ app.post('/testCluster', async (req, res) => {
   console.log('pulling cluster from db...');
   const params: RequestParams = req.body;
   const clusters: TreatedCluster[] = await db
-    .table('butte_treatedclusters_farm')
+    .table('treatedclusters')
     .where({ treatmentid: params.treatmentid, year: 2016, cluster_no: 42504 });
   const cluster = clusters[0];
 
@@ -224,9 +226,10 @@ app.post('/process', async (req, res) => {
   }
   const results: Results = {
     clusterIds: [],
+    errorIds: [],
     years: []
   };
-  const years = [2016, 2017, 2018, 2019, 2020, 2021];
+  const years = [2016, 2017]; // , 2018, 2019, 2020, 2021];
   // TODO: use separate TEA endpoint just to get biomass target
   const teaOutput: OutputModGPO | OutputModCHP | OutputModGP = await getTeaOutputs(
     params.teaModel,
@@ -234,24 +237,26 @@ app.post('/process', async (req, res) => {
   );
   const biomassTarget = teaOutput.ElectricalAndFuelBaseYear.BiomassTarget;
   console.log(`biomassTarget: ${biomassTarget}, processing...`);
-  const bounds = getBoundsOfDistance(
-    { latitude: params.lat, longitude: params.lng },
-    params.radius * 1000 // km to m
-  );
+  const bounds: Bounds[][] = [];
+  const radius = 0;
 
   for (let index = 0; index < years.length; index++) {
     const result = await processClustersForYear(
+      index,
+      radius,
       params,
       teaOutput,
       biomassTarget,
       bounds,
       years[index],
-      results.clusterIds
+      results.clusterIds,
+      results.errorIds
     ).then(yearResult => {
       console.log(`year: ${years[index]}, # of clusters: ${yearResult.clusterNumbers.length}`);
       // console.log(yearResult);
       results.years.push(yearResult);
       results.clusterIds.push(...yearResult.clusterNumbers);
+      results.errorIds.push(...yearResult.errorClusterNumbers);
     });
   }
 
@@ -261,24 +266,19 @@ app.post('/process', async (req, res) => {
 });
 
 const processClustersForYear = async (
+  index: number,
+  radius: number,
   params: RequestParams,
   teaOutput: OutputModGPO | OutputModCHP | OutputModGP,
   biomassTarget: number,
-  bounds: any,
+  yearlyBounds: Bounds[][],
   year: number,
-  usedIds: number[]
+  usedIds: number[],
+  errorIds: number[]
 ): Promise<YearlyResult> => {
   return new Promise(async (resolve, reject) => {
     // console.log(`year: ${year}, usedIds: ${usedIds}`);
-
     try {
-      const clusters: TreatedCluster[] = await db
-        .table('butte_treatedclusters_farm')
-        .where({ treatmentid: params.treatmentid, year: year })
-        .whereNotIn('cluster_no', usedIds)
-        .whereBetween('landing_lat', [bounds[0].latitude, bounds[1].latitude])
-        .andWhereBetween('landing_lng', [bounds[0].longitude, bounds[1].longitude]);
-      console.log(`number of available clusters: ${clusters.length}`);
       const results: YearlyResult = {
         year,
         clusterNumbers: [],
@@ -291,108 +291,49 @@ const processClustersForYear = async (
         totalTransportationCost: 0,
         clusters: [],
         errorClusters: [],
+        errorClusterNumbers: [],
         teaResults: teaOutput
       };
 
-      const clusterCosts: ClusterResult[] = [];
-
-      console.log('calculating distances for clusters...');
-      // first generate costs for each cluster
-      for (const cluster of clusters) {
-        const routeOptions: OSRM.RouteOptions = {
-          coordinates: [
-            [params.lng, params.lat],
-            [cluster.landing_lng, cluster.landing_lat]
-          ],
-          annotations: ['duration', 'distance']
-        };
-
-        // currently distance is the osrm generated distance between each landing site and the facility location
-        const route: any = await getRouteDistanceAndDuration(routeOptions);
-        let distance = route.distance;
-        distance = distance / 1000; // m to km
-        distance = distance * 0.5; // to compensate for the distance being too high, multiply by factor of 0.5
-        // TODO: remove factor mult when we update distance calculation
-
-        const duration = route.duration / 3600; // seconds to hours
-        // TODO: update how we are calculating transportation cost, in reality a truck is not taking 1 trip per cluster
-        // could be multiple trips, depending on load
-        const transportationCostPerGT = getTransportationCost(
-          distance,
-          duration,
-          params.dieselFuelPrice
-        );
-
-        try {
-          const frcsResult: OutputVarMod = await runFrcsOnCluster(
-            cluster,
-            params.system,
-            distance * 0.621371, // move in distance km to miles
-            params.dieselFuelPrice,
-            params.teaInputs.ElectricalFuelBaseYear.MoistureContent
-          );
-
-          // use frcs calculated available feedstock
-          const clusterBiomass = frcsResult.Residue.WeightPerAcre * cluster.area;
-          const transportationCostTotal = transportationCostPerGT * clusterBiomass;
-
-          clusterCosts.push({
-            cluster_no: cluster.cluster_no,
-            area: cluster.area,
-            biomass: clusterBiomass,
-            distance: distance,
-            combinedCost: frcsResult.Total.CostPerAcre * cluster.area,
-            residueCost: frcsResult.Residue.CostPerAcre * cluster.area,
-            transportationCost: transportationCostTotal,
-            frcsResult: frcsResult,
-            lat: cluster.landing_lat,
-            lng: cluster.landing_lng
-          });
-        } catch (err) {
-          // swallow errors frcs throws and push the error message instead
-          results.errorClusters.push({
-            cluster_no: cluster.cluster_no,
-            area: cluster.area,
-            biomass: 0,
-            error: err.message,
-            slope: cluster.slope
-          });
-        }
-      }
-      console.log('sorting clusters...');
-      // sort by distance so that for every year, we select clusters that are close to each other
-      clusterCosts.sort((a, b) => {
-        return a.distance - b.distance;
-      });
-
-      const lcaTotals = {
+      const lcaTotals: LCATotals = {
         totalDiesel: 0,
         totalGasoline: 0,
         totalJetFuel: 0,
         totalTransportationDistance: 0
       };
 
-      console.log('selecting clusters to use...');
-      for (const cluster of clusterCosts) {
-        if (results.totalBiomass >= biomassTarget) {
-          // results.skippedClusters.push(cluster); // keeping for testing for now
-          break;
-        } else {
-          // console.log(cluster.cluster_no + ',');
-          results.totalBiomass += cluster.biomass;
-          results.totalArea += cluster.area;
-          results.totalCombinedCost += cluster.combinedCost;
-          results.totalTransportationCost += cluster.transportationCost;
-          results.totalResidueCost += cluster.residueCost;
-          lcaTotals.totalDiesel += cluster.frcsResult.Residue.DieselPerAcre * cluster.area;
-          lcaTotals.totalGasoline += cluster.frcsResult.Residue.GasolinePerAcre * cluster.area;
-          lcaTotals.totalJetFuel += cluster.frcsResult.Residue.JetFuelPerAcre * cluster.area;
-          lcaTotals.totalTransportationDistance += cluster.distance;
-
-          // results.clusters.push(cluster);
-          results.clusterNumbers.push(cluster.cluster_no);
-        }
+      while (results.totalBiomass < biomassTarget) {
+        radius += 1000;
+        console.log(
+          `getting clusters from db, radius: ${radius}, totalBiomass: ${
+            results.totalBiomass
+          }, biomassTarget: ${biomassTarget}, ${results.totalBiomass < biomassTarget} ...`
+        );
+        const clusters: TreatedCluster[] = await getClusters(
+          params,
+          year,
+          usedIds,
+          errorIds,
+          yearlyBounds,
+          index,
+          radius
+        );
+        console.log('sorting clusters...');
+        const sortedClusters = clusters.sort(
+          (a, b) =>
+            getDistance(
+              { lat: params.lat, lng: params.lng },
+              { lat: a.landing_lat, lng: a.landing_lng }
+            ) -
+            getDistance(
+              { lat: params.lat, lng: params.lng },
+              { lat: b.landing_lat, lng: b.landing_lng }
+            )
+        );
+        console.log('selecting clusters...');
+        await selectClusters(params, biomassTarget, sortedClusters, results, lcaTotals);
       }
+
       results.numberOfClusters = results.clusterNumbers.length;
       // console.log(results);
       const lcaInputs: LCARunParams = {
@@ -427,6 +368,116 @@ const processClustersForYear = async (
       console.log(e);
       reject(e.message);
     }
+  });
+};
+
+const getClusters = async (
+  params: RequestParams,
+  year: number,
+  usedIds: number[],
+  errorIds: number[],
+  yearlyBounds: Bounds[][],
+  index: number,
+  radius: number
+): Promise<TreatedCluster[]> => {
+  return new Promise(async (res, rej) => {
+    const bounds = getBoundsOfDistance(
+      { latitude: params.lat, longitude: params.lng },
+      radius // expand by 1 km at a time
+    );
+    yearlyBounds.push(bounds);
+    const clusters: TreatedCluster[] = await db
+      .table('treatedclusters')
+      .where({ treatmentid: params.treatmentid, year: year })
+      .whereNotIn('cluster_no', [...usedIds, ...errorIds])
+      .whereBetween('landing_lat', [
+        yearlyBounds[index][0].latitude,
+        yearlyBounds[index][1].latitude
+      ])
+      .andWhereBetween('landing_lng', [
+        yearlyBounds[index][0].longitude,
+        yearlyBounds[index][1].longitude
+      ]);
+    res(clusters);
+  });
+};
+
+const selectClusters = async (
+  params: RequestParams,
+  biomassTarget: number,
+  sortedClusters: TreatedCluster[],
+  results: YearlyResult,
+  lcaTotals: LCATotals
+) => {
+  return new Promise(async (res, rej) => {
+    for (const cluster of sortedClusters) {
+      if (results.totalBiomass >= biomassTarget) {
+        // results.skippedClusters.push(cluster); // keeping for testing for now
+        break;
+      } else {
+        const routeOptions: OSRM.RouteOptions = {
+          coordinates: [
+            [params.lng, params.lat],
+            [cluster.landing_lng, cluster.landing_lat]
+          ],
+          annotations: ['duration', 'distance']
+        };
+
+        // currently distance is the osrm generated distance between each landing site and the facility location
+        const route: any = await getRouteDistanceAndDuration(routeOptions);
+        let distance = route.distance;
+        distance = distance / 1000; // m to km
+        distance = distance * 0.5; // to compensate for the distance being too high, multiply by factor of 0.5
+        // TODO: remove factor mult when we update distance calculation
+
+        const duration = route.duration / 3600; // seconds to hours
+        // TODO: update how we are calculating transportation cost
+        // in reality a truck is not taking 1 trip per cluster
+        // could be multiple trips, depending on load
+        const transportationCostPerGT = getTransportationCost(
+          distance,
+          duration,
+          params.dieselFuelPrice
+        );
+
+        try {
+          const frcsResult: OutputVarMod = await runFrcsOnCluster(
+            cluster,
+            params.system,
+            distance * 0.621371, // move in distance km to miles
+            params.dieselFuelPrice,
+            params.teaInputs.ElectricalFuelBaseYear.MoistureContent
+          );
+
+          // use frcs calculated available feedstock
+          const clusterBiomass = frcsResult.Residue.WeightPerAcre * cluster.area;
+          const transportationCostTotal = transportationCostPerGT * clusterBiomass;
+
+          results.totalBiomass += clusterBiomass;
+          results.totalArea += cluster.area;
+          results.totalCombinedCost += frcsResult.Total.CostPerAcre * cluster.area;
+          results.totalTransportationCost += transportationCostTotal;
+          results.totalResidueCost += frcsResult.Residue.CostPerAcre * cluster.area;
+          lcaTotals.totalDiesel += frcsResult.Residue.DieselPerAcre * cluster.area;
+          lcaTotals.totalGasoline += frcsResult.Residue.GasolinePerAcre * cluster.area;
+          lcaTotals.totalJetFuel += frcsResult.Residue.JetFuelPerAcre * cluster.area;
+          lcaTotals.totalTransportationDistance += distance;
+
+          results.clusterNumbers.push(cluster.cluster_no);
+        } catch (err) {
+          // swallow errors frcs throws and push the error message instead
+          results.errorClusters.push({
+            cluster_no: cluster.cluster_no,
+            area: cluster.area,
+            biomass: 0,
+            error: err.message,
+            slope: cluster.slope
+          });
+          results.errorClusterNumbers.push(cluster.cluster_no);
+        }
+      }
+    }
+    res();
   });
 };
 
@@ -473,4 +524,5 @@ const getTeaOutputs = async (type: string, inputs: any) => {
   }
   return result;
 };
+// tslint:disable-next-line: max-file-line-count
 app.listen(port, () => console.log(`Listening on port ${port}!`));

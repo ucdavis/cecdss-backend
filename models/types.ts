@@ -6,7 +6,6 @@ import { LCAresults } from './lcaModels';
 export interface RequestParams {
   lat: number;
   lng: number;
-  radius: number;
   system: string;
   treatmentid: number;
   dieselFuelPrice: number; // $/gal
@@ -27,6 +26,7 @@ export interface ClusterRequestParams {
 
 export interface Results {
   clusterIds: number[];
+  errorIds: number[];
   years: YearlyResult[];
 }
 
@@ -44,6 +44,7 @@ export interface YearlyResult {
   clusterNumbers: number[];
   clusters: ClusterResult[];
   errorClusters: ClusterErrorResult[];
+  errorClusterNumbers: number[];
 }
 
 export interface ClusterResult {
@@ -65,4 +66,16 @@ export interface ClusterErrorResult {
   area: number;
   error: string;
   slope: number;
+}
+
+export interface Bounds {
+  latitude: number;
+  longitude: number;
+}
+
+export interface LCATotals {
+  totalDiesel: number;
+  totalGasoline: number;
+  totalJetFuel: number;
+  totalTransportationDistance: number;
 }
