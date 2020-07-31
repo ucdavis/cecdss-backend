@@ -28,7 +28,7 @@ import {
   YearlyResult
 } from './models/types';
 import { runFrcsOnCluster, testRunFrcsOnCluster } from './runFrcs';
-import { getTransportationCost } from './transportation';
+import { getTransportationCost, TONS_PER_TRUCK } from './transportation';
 
 const PG_DECIMAL_OID = 1700;
 pg.types.setTypeParser(PG_DECIMAL_OID, parseFloat);
@@ -265,7 +265,7 @@ app.post('/process', async (req, res) => {
     years: [],
     radius: 0
   };
-  const years = [2016, 2017]; // , 2018, 2019, 2020, 2021];
+  const years = [2016, 2017, 2018, 2019, 2020, 2021];
   // TODO: use separate TEA endpoint just to get biomass target
   const teaOutput: OutputModGPO | OutputModCHP | OutputModGP = await getTeaOutputs(
     params.teaModel,
@@ -367,6 +367,9 @@ const processClustersForYear = async (
         await selectClusters(params, biomassTarget, sortedClusters, results, lcaTotals);
       }
 
+      // TODO: get move in distance once per year after we have it as a separate frcs route
+      const route: any = await getMoveInDistance(params.lat, params.lng, results.clusters);
+
       results.numberOfClusters = results.clusterNumbers.length;
       // console.log(results);
       const lcaInputs: LCARunParams = {
@@ -443,38 +446,39 @@ const selectClusters = async (
           coordinates: [
             [params.lng, params.lat],
             [cluster.landing_lng, cluster.landing_lat]
-          ],
-          annotations: ['duration', 'distance']
-        };
-
-        // currently distance is the osrm generated distance between each landing site and the facility location
-        const route: any = await getRouteDistanceAndDuration(routeOptions);
-        let distance = route.distance;
-        distance = distance / 1000; // m to km
-        distance = distance * 0.5; // to compensate for the distance being too high, multiply by factor of 0.5
-        // TODO: remove factor mult when we update distance calculation
-
-        const duration = route.duration / 3600; // seconds to hours
-        // TODO: update how we are calculating transportation cost
-        // in reality a truck is not taking 1 trip per cluster
-        // could be multiple trips, depending on load
-        const transportationCostPerGT = getTransportationCost(
-          distance,
-          duration,
-          params.dieselFuelPrice
-        );
-
         try {
           const frcsResult: OutputVarMod = await runFrcsOnCluster(
             cluster,
             params.system,
-            distance * 0.621371, // move in distance km to miles
+            0, // move in distance = 0, calculate once per year instead
             params.dieselFuelPrice,
             params.teaInputs.ElectricalFuelBaseYear.MoistureContent
           );
 
           // use frcs calculated available feedstock
-          const clusterBiomass = frcsResult.Residue.WeightPerAcre * cluster.area;
+          const clusterBiomass = frcsResult.Residue.WeightPerAcre * cluster.area; // green tons
+
+          const routeOptions: OSRM.RouteOptions = {
+            coordinates: [
+              [params.lng, params.lat],
+              [cluster.landing_lng, cluster.landing_lat]
+            ],
+            annotations: ['duration', 'distance']
+          };
+
+          // currently distance is the osrm generated distance between each landing site and the facility location
+          const route: any = await getRouteDistanceAndDuration(routeOptions);
+          // number of trips is how many truckloads it takes to transport biomass
+          const numberOfTripsForTransportation = clusterBiomass / TONS_PER_TRUCK;
+          // multiply the osrm road distance by number of trips, and then by 2 because it's a round trip
+          let distance = route.distance * numberOfTripsForTransportation * 2;
+          distance = distance / 1000; // m to km
+          const duration = route.duration / 3600; // seconds to hours
+          const transportationCostPerGT = getTransportationCost(
+            distance,
+            duration,
+            params.dieselFuelPrice
+          );
           const transportationCostTotal = transportationCostPerGT * clusterBiomass;
 
           results.totalBiomass += clusterBiomass;
@@ -526,6 +530,28 @@ const getRouteDistanceAndDuration = (routeOptions: OSRM.RouteOptions) => {
       const distance = result.routes[0].distance;
       const duration = result.routes[0].duration;
       resolve({ distance, duration });
+    });
+  });
+};
+
+const getMoveInDistance = (facilityLat: number, facilityLng: number, clusters: ClusterResult[]) => {
+  const clusterCoordinates = clusters.map(cluster => [cluster.lng, cluster.lat]);
+  const options: OSRM.TripOptions = {
+    roundtrip: true,
+    coordinates: [
+      [facilityLng, facilityLat], // start at facility
+      ...clusterCoordinates
+    ]
+  };
+
+  return new Promise((resolve, reject) => {
+    osrm.trip(options, async (err, result) => {
+      if (err) {
+        reject(err);
+      }
+      const osrmDistance = result.trips.reduce((dist, trip) => dist + trip.distance, 0);
+      const osrmDuration = result.trips.reduce((dur, trip) => dur + trip.duration, 0);
+      resolve({ osrmDistance, osrmDuration });
     });
   });
 };
