@@ -227,7 +227,8 @@ app.post('/process', async (req, res) => {
   const results: Results = {
     clusterIds: [],
     errorIds: [],
-    years: []
+    years: [],
+    radius: 0
   };
   const years = [2016, 2017]; // , 2018, 2019, 2020, 2021];
   // TODO: use separate TEA endpoint just to get biomass target
@@ -237,17 +238,14 @@ app.post('/process', async (req, res) => {
   );
   const biomassTarget = teaOutput.ElectricalAndFuelBaseYear.BiomassTarget;
   console.log(`biomassTarget: ${biomassTarget}, processing...`);
-  const bounds: Bounds[][] = [];
-  const radius = 0;
 
   for (let index = 0; index < years.length; index++) {
     const result = await processClustersForYear(
       index,
-      radius,
+      results.radius,
       params,
       teaOutput,
       biomassTarget,
-      bounds,
       years[index],
       results.clusterIds,
       results.errorIds
@@ -257,6 +255,7 @@ app.post('/process', async (req, res) => {
       results.years.push(yearResult);
       results.clusterIds.push(...yearResult.clusterNumbers);
       results.errorIds.push(...yearResult.errorClusterNumbers);
+      results.radius = yearResult.radius;
     });
   }
 
@@ -271,7 +270,6 @@ const processClustersForYear = async (
   params: RequestParams,
   teaOutput: OutputModGPO | OutputModCHP | OutputModGP,
   biomassTarget: number,
-  yearlyBounds: Bounds[][],
   year: number,
   usedIds: number[],
   errorIds: number[]
@@ -292,7 +290,8 @@ const processClustersForYear = async (
         clusters: [],
         errorClusters: [],
         errorClusterNumbers: [],
-        teaResults: teaOutput
+        teaResults: teaOutput,
+        radius
       };
 
       const lcaTotals: LCATotals = {
@@ -303,9 +302,9 @@ const processClustersForYear = async (
       };
 
       while (results.totalBiomass < biomassTarget) {
-        radius += 1000;
+        results.radius += 1000;
         console.log(
-          `getting clusters from db, radius: ${radius}, totalBiomass: ${
+          `getting clusters from db, radius: ${results.radius}, totalBiomass: ${
             results.totalBiomass
           }, biomassTarget: ${biomassTarget}, ${results.totalBiomass < biomassTarget} ...`
         );
@@ -314,10 +313,9 @@ const processClustersForYear = async (
           year,
           usedIds,
           errorIds,
-          yearlyBounds,
-          index,
-          radius
+          results.radius
         );
+        console.log(`clusters found: ${clusters.length}`);
         console.log('sorting clusters...');
         const sortedClusters = clusters.sort(
           (a, b) =>
@@ -376,8 +374,6 @@ const getClusters = async (
   year: number,
   usedIds: number[],
   errorIds: number[],
-  yearlyBounds: Bounds[][],
-  index: number,
   radius: number
 ): Promise<TreatedCluster[]> => {
   return new Promise(async (res, rej) => {
@@ -385,19 +381,12 @@ const getClusters = async (
       { latitude: params.lat, longitude: params.lng },
       radius // expand by 1 km at a time
     );
-    yearlyBounds.push(bounds);
     const clusters: TreatedCluster[] = await db
       .table('treatedclusters')
       .where({ treatmentid: params.treatmentid, year: year })
       .whereNotIn('cluster_no', [...usedIds, ...errorIds])
-      .whereBetween('landing_lat', [
-        yearlyBounds[index][0].latitude,
-        yearlyBounds[index][1].latitude
-      ])
-      .andWhereBetween('landing_lng', [
-        yearlyBounds[index][0].longitude,
-        yearlyBounds[index][1].longitude
-      ]);
+      .whereBetween('landing_lat', [bounds[0].latitude, bounds[1].latitude])
+      .andWhereBetween('landing_lng', [bounds[0].longitude, bounds[1].longitude]);
     res(clusters);
   });
 };

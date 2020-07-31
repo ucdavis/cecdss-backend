@@ -28,6 +28,7 @@ export interface Results {
   clusterIds: number[];
   errorIds: number[];
   years: YearlyResult[];
+  radius: number;
 }
 
 export interface YearlyResult {
@@ -45,6 +46,7 @@ export interface YearlyResult {
   clusters: ClusterResult[];
   errorClusters: ClusterErrorResult[];
   errorClusterNumbers: number[];
+  radius: number;
 }
 
 export interface ClusterResult {
