@@ -13,6 +13,11 @@ export interface RequestParams {
   teaInputs: InputModGPO | InputModCHP | InputModGP; // | InputModHydrogen;
 }
 
+export interface RequestParamsTest extends RequestParams {
+  year: number;
+  cluster_no: number;
+}
+
 export interface Treatment {
   id: number;
   name: string;
@@ -35,18 +40,37 @@ export interface YearlyResult {
   year: number;
   lcaResults?: LCAresults;
   teaResults: OutputModGPO | OutputModCHP | OutputModGP;
-  biomassTarget: number;
-  totalBiomass: number;
+  biomassTarget: number; // from tea output
+  totalBiomass: number; // total biomass from frcs residue output
   totalArea: number;
-  totalCombinedCost: number;
-  totalResidueCost: number;
-  totalTransportationCost: number;
+  totalResidueCost: number; // cost of harvesting residue biomass from frcs
+  totalMoveInCost: number; // move in cost from separate frcs function
+  totalMoveInDistance: number;
+  totalTransportationCost: number; // transportation cost per gt * cluster biomass (distance from osrm)
   numberOfClusters: number;
   clusterNumbers: number[];
   clusters: ClusterResult[];
   errorClusters: ClusterErrorResult[];
   errorClusterNumbers: number[];
   radius: number;
+}
+
+export interface YearlyResultTest {
+  cluster_no: number;
+  treatmentid: number;
+  system: string;
+  teaModel: string;
+  year: number;
+  biomassTarget: number;
+  totalBiomass: number;
+  totalArea: number;
+  totalResidueCost: number;
+  totalMoveInCost: number;
+  totalMoveInDistance: number;
+  totalTransportationCost: number;
+  numberOfClusters: number;
+  radius: number;
+  data: any;
 }
 
 export interface ClusterResult {
