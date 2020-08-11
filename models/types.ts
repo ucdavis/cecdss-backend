@@ -39,7 +39,7 @@ export interface Results {
 export interface YearlyResult {
   year: number;
   lcaResults?: LCAresults;
-  teaResults: OutputModGPO | OutputModCHP | OutputModGP;
+  teaResults?: OutputModGPO | OutputModCHP | OutputModGP;
   biomassTarget: number; // from tea output
   totalBiomass: number; // total biomass from frcs residue output
   totalArea: number;
@@ -56,7 +56,6 @@ export interface YearlyResult {
 }
 
 export interface YearlyResultTest {
-  cluster_no: number;
   treatmentid: number;
   system: string;
   teaModel: string;
