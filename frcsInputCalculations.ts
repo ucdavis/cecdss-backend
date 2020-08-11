@@ -65,7 +65,9 @@ export const getFrcsInputs = (
     TreeVolLLT: !volumeLLT || !removalsLLT ? 0 : volumeLLT / removalsLLT,
     DieselFuelPrice: dieselFuelPrice,
     MoistureContent: moistureContent,
-    ChipAll: fixedClusterUnits.treatmentid === 4 ? true : false // true if treatment is timberSalvage
+    ChipAll:
+      fixedClusterUnits.treatmentid === 4 || fixedClusterUnits.treatmentid === 5 ? true : false
+    // true if treatment is timberSalvage or timberSalvageChipTree
   };
   return frcsInputs;
 };
