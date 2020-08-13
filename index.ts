@@ -9,7 +9,7 @@ import { performance } from 'perf_hooks';
 import pg from 'pg';
 import { getFrcsInputsTest } from './frcsInputCalculations';
 import { TreatedCluster } from './models/treatedcluster';
-import { RequestParams, RequestParamsTest, Results, YearlyResultTest } from './models/types';
+import { RequestParamsTest, RequestParamsYear, RequestParamsYears, Results } from './models/types';
 import { getTeaOutputs, processClustersForYear } from './processYear';
 import { testRunFrcsOnCluster } from './runFrcs';
 import { getTransportationCost } from './transportation';
@@ -44,9 +44,9 @@ console.log('connected to osrm');
 // allow cors
 app.use(cors());
 
-app.post('/process', async (req, res) => {
+app.post('/processYears', async (req, res) => {
   const t0 = performance.now();
-  const params: RequestParams = req.body;
+  const params: RequestParamsYears = req.body;
   const systems = [
     'Ground-Based Mech WT',
     'Ground-Based Manual WT',
@@ -73,7 +73,6 @@ app.post('/process', async (req, res) => {
     years: [],
     radius: 0
   };
-  const years = [2016, 2017, 2018, 2019, 2020, 2021];
   // TODO: use separate TEA endpoint just to get biomass target
   const teaOutput: OutputModGPO | OutputModCHP | OutputModGP = await getTeaOutputs(
     params.teaModel,
@@ -81,27 +80,25 @@ app.post('/process', async (req, res) => {
   );
   const biomassTarget = teaOutput.ElectricalAndFuelBaseYear.BiomassTarget;
   console.log(`biomassTarget: ${biomassTarget}, processing...`);
-  for (let index = 0; index < years.length; index++) {
-    const result = await processClustersForYear(
+  for (let index = 0; index < params.years.length; index++) {
+    const yearResult = await processClustersForYear(
       db,
       osrm,
       results.radius,
       params,
       teaOutput,
       biomassTarget,
-      years[index],
+      params.years[index],
       results.clusterIds,
       results.errorIds
-    ).then(yearResult => {
-      console.log(`year: ${years[index]}, # of clusters: ${yearResult.clusterNumbers.length}`);
-      // console.log(yearResult);
-      results.years.push(yearResult);
-      results.clusterIds.push(...yearResult.clusterNumbers);
-      results.errorIds.push(...yearResult.errorClusterNumbers);
-      results.radius = yearResult.radius;
-    });
+    );
+    console.log(`year: ${params.years[index]}, # of clusters: ${yearResult.clusterNumbers.length}`);
+    // console.log(yearResult);
+    results.years.push(yearResult);
+    results.clusterIds.push(...yearResult.clusterNumbers);
+    results.errorIds.push(...yearResult.errorClusterNumbers);
+    results.radius = yearResult.radius;
   }
-
   console.log('RESULTS:');
   console.log(results);
 
@@ -109,6 +106,58 @@ app.post('/process', async (req, res) => {
   console.log(`Running took ${t1 - t0} milliseconds.`);
 
   res.status(200).json(results.years);
+});
+
+app.post('/process', async (req, res) => {
+  const t0 = performance.now();
+  const params: RequestParamsYear = req.body;
+  const systems = [
+    'Ground-Based Mech WT',
+    'Ground-Based Manual WT',
+    'Ground-Based Manual Log',
+    'Ground-Based CTL',
+    'Cable Manual WT/Log',
+    'Cable Manual WT',
+    'Cable Manual Log',
+    'Cable CTL',
+    'Helicopter Manual Log',
+    'Helicopter CTL'
+  ];
+  if (!systems.some(x => x === params.system)) {
+    res.status(400).send('System not recognized');
+  }
+
+  const teaModels = ['GPO', 'CHP', 'GP'];
+  if (!teaModels.some(x => x === params.teaModel)) {
+    res.status(400).send('TEA Model not recognized');
+  }
+
+  // TODO: use separate TEA endpoint just to get biomass target
+  const teaOutput: OutputModGPO | OutputModCHP | OutputModGP = await getTeaOutputs(
+    params.teaModel,
+    params.teaInputs
+  );
+  const biomassTarget = teaOutput.ElectricalAndFuelBaseYear.BiomassTarget;
+  console.log(`biomassTarget: ${biomassTarget}, processing...`);
+
+  const yearResult = await processClustersForYear(
+    db,
+    osrm,
+    params.radius,
+    params,
+    teaOutput,
+    biomassTarget,
+    params.year,
+    params.clusterIds,
+    params.errorIds
+  );
+  console.log(`year: ${params.year}, # of clusters: ${yearResult.clusterNumbers.length}`);
+  // console.log(yearResult);
+
+  const t1 = performance.now();
+  console.log(`Running took ${t1 - t0} milliseconds.`);
+
+  res.status(200).json(yearResult);
 });
 
 // tslint:disable-next-line: max-file-line-count

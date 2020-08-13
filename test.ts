@@ -2,7 +2,7 @@ import { OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/out/models
 import dotenv from 'dotenv';
 import knex from 'knex';
 import OSRM from 'osrm';
-import { RequestParams, RequestParamsTest, YearlyResultTest } from './models/types';
+import { RequestParamsYears, YearlyResultTest } from './models/types';
 import { getTeaOutputs, processClustersForYear } from './processYear';
 
 dotenv.config();
@@ -24,7 +24,8 @@ const osrm = new OSRM('./data/california-latest.osrm');
 console.log('connected to osrm');
 const test = async () => {
   console.log('test.....');
-  const params: RequestParams = {
+  const params: RequestParamsYears = {
+    years: [2016],
     lat: 39.644308,
     lng: -121.553971,
     system: '',
@@ -92,21 +93,6 @@ const test = async () => {
   for (const treatment of treatments) {
     for (const system of systems) {
       console.log(`treatment: ${treatment}, system: ${system}`);
-      const outputs = await testYears(
-        treatment,
-        system,
-        params.teaModel,
-        teaOutput,
-        biomassTarget,
-        params
-      )
-        .then(async resp => {
-          console.log(`pushing results of ${treatment}, ${system}`);
-          await db.table('treatment_systems_test').insert(resp);
-        })
-        .catch(err => {
-          console.log(`cannot push results of ${treatment}, ${system}: ${err}`);
-        });
     }
   }
 
@@ -122,7 +108,7 @@ const testYears = async (
   teaModel: string,
   teaOutput: any,
   biomassTarget: number,
-  params: RequestParams
+  params: RequestParamsYears
 ): Promise<YearlyResultTest> => {
   return new Promise(async (resolve, reject) => {
     // TODO: use separate TEA endpoint just to get biomass target
@@ -131,7 +117,7 @@ const testYears = async (
 
     try {
       const radius = 0;
-      const paramsTest: RequestParams = {
+      const paramsTest: RequestParamsYears = {
         ...params,
         treatmentid: treatmentid,
         system: system,
@@ -144,7 +130,7 @@ const testYears = async (
         paramsTest,
         teaOutput,
         biomassTarget,
-        2016,
+        params.years[0],
         [],
         []
       );

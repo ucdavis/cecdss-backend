@@ -13,6 +13,17 @@ export interface RequestParams {
   teaInputs: InputModGPO | InputModCHP | InputModGP; // | InputModHydrogen;
 }
 
+export interface RequestParamsYears extends RequestParams {
+  years: number[];
+}
+
+export interface RequestParamsYear extends RequestParams {
+  year: number;
+  clusterIds: number[];
+  errorIds: number[];
+  radius: number;
+}
+
 export interface RequestParamsTest extends RequestParams {
   year: number;
   cluster_no: number;
