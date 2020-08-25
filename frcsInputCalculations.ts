@@ -30,8 +30,8 @@ export const getFrcsInputs = (
   const boleWeightLLT = calcBoleWeightLLT(fixedClusterUnits) / (1 - moistureContent / 100); // green short tons
   const residueWeightLLT = calcResidueWeightLLT(fixedClusterUnits) / (1 - moistureContent / 100);
   const residueFractionLLT = residueWeightLLT / boleWeightLLT;
-  const volumeLLT = calcVolumeLLT(fixedClusterUnits);
-  const removalsLLT = calcRemovalsLLT(fixedClusterUnits);
+  const volumeLLT = calcVolumeLLT(fixedClusterUnits, system);
+  const removalsLLT = calcRemovalsLLT(fixedClusterUnits, system);
 
   const frcsInputs: InputVarMod = {
     System: system,
@@ -96,8 +96,8 @@ export const getFrcsInputsTest = (
   const boleWeightLLT = calcBoleWeightLLT(fixedClusterUnits) / (1 - moistureContent / 100); // green short tons
   const residueWeightLLT = calcResidueWeightLLT(fixedClusterUnits) / (1 - moistureContent / 100);
   const residueFractionLLT = residueWeightLLT / boleWeightLLT;
-  const volumeLLT = calcVolumeLLT(fixedClusterUnits);
-  const removalsLLT = calcRemovalsLLT(fixedClusterUnits);
+  const volumeLLT = calcVolumeLLT(fixedClusterUnits, system);
+  const removalsLLT = calcRemovalsLLT(fixedClusterUnits, system);
 
   const frcsInputs: InputVarMod = {
     System: system,
@@ -110,10 +110,9 @@ export const getFrcsInputsTest = (
     Slope: !!fixedClusterUnits.slope ? fixedClusterUnits.slope : 0,
     Elevation: !!fixedClusterUnits.center_elevation ? fixedClusterUnits.center_elevation : 0,
     CalcLoad: true, // always true
-    CalcMoveIn: true, // always true
+    CalcMoveIn: false, // always false, we calculate separately in getMoveInCosts function
+    MoveInDist: 0,
     Area: fixedClusterUnits.area,
-    // TODO: algorithm to calculate this
-    MoveInDist: distance,
     CalcResidues: true, // always true
     UserSpecWDCT: !volumeCT || !boleWeightCT ? 0 : boleWeightCT / volumeCT,
     UserSpecWDSLT: !volumeSLT || !boleWeightSLT ? 0 : boleWeightSLT / volumeSLT,
@@ -132,7 +131,9 @@ export const getFrcsInputsTest = (
     TreeVolLLT: !volumeLLT || !removalsLLT ? 0 : volumeLLT / removalsLLT,
     DieselFuelPrice: dieselFuelPrice,
     MoistureContent: moistureContent,
-    ChipAll: fixedClusterUnits.treatmentid === 4 ? true : false // true if treatment is timberSalvage
+    ChipAll:
+      fixedClusterUnits.treatmentid === 4 || fixedClusterUnits.treatmentid === 5 ? true : false
+    // true if treatment is timberSalvage or timberSalvageChipTree
   };
   return {
     frcsInputs,
@@ -225,7 +226,7 @@ const calcResidueWeightLLT = (cluster: TreatedCluster) => {
   );
 };
 
-const calcVolumeLLT = (cluster: TreatedCluster) => {
+const calcVolumeLLT = (cluster: TreatedCluster, system: string) => {
   return (
     cluster.vol_25 +
     cluster.vol_35 +
@@ -237,7 +238,7 @@ const calcVolumeLLT = (cluster: TreatedCluster) => {
   // return calculateVolume(cluster, 25);
 };
 
-const calcRemovalsLLT = (cluster: TreatedCluster) => {
+const calcRemovalsLLT = (cluster: TreatedCluster, system: string) => {
   return (
     cluster.tpa_25 +
     cluster.sng_25 +
