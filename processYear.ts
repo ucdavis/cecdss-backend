@@ -255,8 +255,8 @@ const selectClusters = async (
             residueCost: frcsResult.Residue.CostPerAcre * cluster.area,
             transportationCost: transportationCostTotal,
             frcsResult: frcsResult,
-            lat: cluster.landing_lat,
-            lng: cluster.landing_lng
+            lat: cluster.center_lat,
+            lng: cluster.center_lng
           });
           results.clusterNumbers.push(cluster.cluster_no);
         } catch (err) {
