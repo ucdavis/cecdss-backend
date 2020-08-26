@@ -49,7 +49,8 @@ export const processClustersForYear = async (
         clusters: [],
         errorClusters: [],
         errorClusterNumbers: [],
-        teaResults: teaOutput
+        teaResults: teaOutput,
+        fuelCost: 0
       };
 
       const lcaTotals: LCATotals = {
@@ -146,8 +147,10 @@ export const processClustersForYear = async (
       const fuelCost =
         (results.totalResidueCost + results.totalTransportationCost + results.totalMoveInCost) /
         results.totalBiomass;
-      const updatedTeaInputs: any = { ...params.teaInputs }; // copy original tea inputs
-      updatedTeaInputs.BiomassFuelCost = fuelCost; // but update using fuel cost calculated from frcs results
+      results.fuelCost = fuelCost;
+      const updatedTeaInputs = { ...params.teaInputs }; // copy original tea inputs
+      updatedTeaInputs.ExpensesBaseYear.BiomassFuelCost = fuelCost;
+      // but update using fuel cost calculated from frcs results
 
       //   console.log('updating tea outputs...');
       const updatedTeaOutputs: any = await getTeaOutputs(params.teaModel, updatedTeaInputs);

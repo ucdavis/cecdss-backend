@@ -64,6 +64,7 @@ export interface YearlyResult {
   errorClusters: ClusterErrorResult[];
   errorClusterNumbers: number[];
   radius: number;
+  fuelCost: number;
 }
 
 export interface YearlyResultTest {

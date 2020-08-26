@@ -13,22 +13,35 @@ export const getFrcsInputs = (
   dieselFuelPrice: number,
   moistureContent: number
 ) => {
+  // TODO: remove this function when we update our backend
   const fixedClusterUnits = fixClusterUnits(cluster, cluster.area / PIXEL_AREA_TO_ACRES);
-  const boleWeightCT = calcBoleWeightCT(fixedClusterUnits) / (1 - moistureContent / 100); // green short tons
+  const boleWeightCT =
+    calcBoleWeightCT(fixedClusterUnits) / // dry short tons
+    (1 - moistureContent / 100); // convert to green short tons
   // residue here only refers to the residue defined in FRCS - tops and limbs of log trees
-  const residueWeightCT = calcResidueWeightCT(fixedClusterUnits) / (1 - moistureContent / 100);
+  const residueWeightCT =
+    calcResidueWeightCT(fixedClusterUnits) / // dry short tons
+    (1 - moistureContent / 100); // convert to green short tons
   const residueFractionCT = residueWeightCT / boleWeightCT;
   const volumeCT = calcVolumeCT(fixedClusterUnits);
   const removalsCT = calcRemovalsCT(fixedClusterUnits);
 
-  const boleWeightSLT = calcBoleWeightSLT(fixedClusterUnits) / (1 - moistureContent / 100); // green short tons
-  const residueWeightSLT = calcResidueWeightSLT(fixedClusterUnits) / (1 - moistureContent / 100);
+  const boleWeightSLT =
+    calcBoleWeightSLT(fixedClusterUnits) / // dry short tons
+    (1 - moistureContent / 100); // convert to green short tons
+  const residueWeightSLT =
+    calcResidueWeightSLT(fixedClusterUnits) / // dry short tons
+    (1 - moistureContent / 100); // convert to green short tons
   const residueFractionSLT = residueWeightSLT / boleWeightSLT;
   const volumeSLT = calcVolumeSLT(fixedClusterUnits);
   const removalsSLT = calcRemovalsSLT(fixedClusterUnits);
 
-  const boleWeightLLT = calcBoleWeightLLT(fixedClusterUnits) / (1 - moistureContent / 100); // green short tons
-  const residueWeightLLT = calcResidueWeightLLT(fixedClusterUnits) / (1 - moistureContent / 100);
+  const boleWeightLLT =
+    calcBoleWeightLLT(fixedClusterUnits) / // dry short tons
+    (1 - moistureContent / 100); // convert to green short tons
+  const residueWeightLLT =
+    calcResidueWeightLLT(fixedClusterUnits) / // dry short tons
+    (1 - moistureContent / 100); // convert to green short tons
   const residueFractionLLT = residueWeightLLT / boleWeightLLT;
   const volumeLLT = calcVolumeLLT(fixedClusterUnits, system);
   const removalsLLT = calcRemovalsLLT(fixedClusterUnits, system);
@@ -80,21 +93,33 @@ export const getFrcsInputsTest = (
   moistureContent: number
 ) => {
   const fixedClusterUnits = fixClusterUnits(cluster, cluster.area / PIXEL_AREA_TO_ACRES);
-  const boleWeightCT = calcBoleWeightCT(fixedClusterUnits) / (1 - moistureContent / 100); // green short tons
+  const boleWeightCT =
+    calcBoleWeightCT(fixedClusterUnits) / // dry short tons
+    (1 - moistureContent / 100); // convert to green short tons
   // residue here only refers to the residue defined in FRCS - tops and limbs of log trees
-  const residueWeightCT = calcResidueWeightCT(fixedClusterUnits) / (1 - moistureContent / 100);
+  const residueWeightCT =
+    calcResidueWeightCT(fixedClusterUnits) / // dry short tons
+    (1 - moistureContent / 100); // convert to green short tons
   const residueFractionCT = residueWeightCT / boleWeightCT;
   const volumeCT = calcVolumeCT(fixedClusterUnits);
   const removalsCT = calcRemovalsCT(fixedClusterUnits);
 
-  const boleWeightSLT = calcBoleWeightSLT(fixedClusterUnits) / (1 - moistureContent / 100); // green short tons
-  const residueWeightSLT = calcResidueWeightSLT(fixedClusterUnits) / (1 - moistureContent / 100);
+  const boleWeightSLT =
+    calcBoleWeightSLT(fixedClusterUnits) / // dry short tons
+    (1 - moistureContent / 100); // convert to green short tons
+  const residueWeightSLT =
+    calcResidueWeightSLT(fixedClusterUnits) / // dry short tons
+    (1 - moistureContent / 100); // convert to green short tons
   const residueFractionSLT = residueWeightSLT / boleWeightSLT;
   const volumeSLT = calcVolumeSLT(fixedClusterUnits);
   const removalsSLT = calcRemovalsSLT(fixedClusterUnits);
 
-  const boleWeightLLT = calcBoleWeightLLT(fixedClusterUnits) / (1 - moistureContent / 100); // green short tons
-  const residueWeightLLT = calcResidueWeightLLT(fixedClusterUnits) / (1 - moistureContent / 100);
+  const boleWeightLLT =
+    calcBoleWeightLLT(fixedClusterUnits) / // dry short tons
+    (1 - moistureContent / 100); // convert to green short tons
+  const residueWeightLLT =
+    calcResidueWeightLLT(fixedClusterUnits) / // dry short tons
+    (1 - moistureContent / 100); // convert to green short tons
   const residueFractionLLT = residueWeightLLT / boleWeightLLT;
   const volumeLLT = calcVolumeLLT(fixedClusterUnits, system);
   const removalsLLT = calcRemovalsLLT(fixedClusterUnits, system);
