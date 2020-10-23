@@ -1,6 +1,11 @@
 import { getMoveInCosts } from '@ucdavis/frcs';
 import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
-import { gasificationPower, genericCombinedHeatPower, genericPowerOnly } from '@ucdavis/tea';
+import {
+  calculateEnergyRevenueRequired,
+  gasificationPower,
+  genericCombinedHeatPower,
+  genericPowerOnly
+} from '@ucdavis/tea';
 import { OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/out/models/output.model';
 import { getBoundsOfDistance, getDistance } from 'geolib';
 import fetch from 'isomorphic-fetch';
@@ -13,6 +18,7 @@ import {
   ClusterResult,
   LCATotals,
   RequestParams,
+  TreatedClustersInfo,
   YearlyResult,
   YearlyResultTest
 } from './models/types';
@@ -24,12 +30,10 @@ export const processClustersForYear = async (
   osrm: OSRM,
   radius: number,
   params: RequestParams,
-  teaOutput: OutputModGPO | OutputModCHP | OutputModGP,
   biomassTarget: number,
   year: number,
-  usedIds: number[],
-  errorIds: number[],
-  result?: YearlyResultTest
+  usedIds: string[],
+  errorIds: string[]
 ): Promise<YearlyResult> => {
   return new Promise(async (resolve, reject) => {
     // console.log(`year: ${year}, usedIds: ${usedIds}`);
@@ -39,7 +43,6 @@ export const processClustersForYear = async (
         clusterNumbers: [],
         numberOfClusters: 0,
         totalBiomass: 0,
-        biomassTarget,
         totalArea: 0,
         totalResidueCost: 0,
         totalMoveInCost: 0,
@@ -49,8 +52,9 @@ export const processClustersForYear = async (
         clusters: [],
         errorClusters: [],
         errorClusterNumbers: [],
-        teaResults: teaOutput,
-        fuelCost: 0
+        fuelCost: 0,
+        energyRevenueRequired: 0,
+        geoJson: []
       };
 
       const lcaTotals: LCATotals = {
@@ -61,14 +65,18 @@ export const processClustersForYear = async (
       };
 
       while (results.totalBiomass < biomassTarget) {
-        if (results.radius > 20000 && results.totalBiomass / biomassTarget < 0.3) {
+        if (
+          results.radius > 40000 &&
+          results.clusters.length > 3800 &&
+          results.totalBiomass / biomassTarget < 0.1
+        ) {
           console.log('radius large & not enough biomass');
           break;
         }
 
-        results.radius += 1000;
+        results.radius += 4000;
         console.log(
-          `getting clusters from db, radius: ${results.radius}, totalBiomass: ${
+          `year:${year} getting clusters from db, radius: ${results.radius}, totalBiomass: ${
             results.totalBiomass
           }, biomassTarget: ${biomassTarget}, ${results.totalBiomass < biomassTarget} ...`
         );
@@ -80,8 +88,9 @@ export const processClustersForYear = async (
           errorIds,
           results.radius
         );
-        console.log(`clusters found: ${clusters.length}`);
-        console.log('sorting clusters...');
+        console.log(`year:${year} clusters found: ${clusters.length}`);
+        console.log(`year:${year} sorting clusters...`);
+        // TODO: sort in query
         const sortedClusters = clusters.sort(
           (a, b) =>
             getDistance(
@@ -93,13 +102,27 @@ export const processClustersForYear = async (
               { lat: b.landing_lat, lng: b.landing_lng }
             )
         );
-        console.log('selecting clusters...');
-        await selectClusters(osrm, params, biomassTarget, sortedClusters, results, lcaTotals);
+        console.log(`year:${year} selecting clusters...`);
+        await selectClusters(
+          osrm,
+          params,
+          biomassTarget,
+          sortedClusters,
+          results,
+          lcaTotals,
+          usedIds,
+          errorIds
+        );
       }
 
       console.log(`calculating move in distance on ${results.clusters.length} clusters...`);
       let moveInDistance = 0;
-      if (results.totalBiomass > 0 && results.clusters.length < 5000) {
+      if (
+        results.totalBiomass > 0 &&
+        results.clusters.length < 5000 &&
+        params.treatmentid === 4 &&
+        params.system === 'Ground-Based CTL'
+      ) {
         const t0 = performance.now();
         moveInDistance = await getMoveInDistance(osrm, params.lat, params.lng, results.clusters);
         const t1 = performance.now();
@@ -129,15 +152,10 @@ export const processClustersForYear = async (
       // console.log(results);
       const lcaInputs: LCARunParams = {
         technology: params.teaModel,
-        dieselPerKwhElectricity:
-          lcaTotals.totalDiesel / params.teaInputs.ElectricalFuelBaseYear.NetElectricalCapacity,
-        gasolinePerKwhElectricity:
-          lcaTotals.totalGasoline / params.teaInputs.ElectricalFuelBaseYear.NetElectricalCapacity,
-        jetFuelPerKwhElectricity:
-          lcaTotals.totalJetFuel / params.teaInputs.ElectricalFuelBaseYear.NetElectricalCapacity,
-        transportationDistance:
-          lcaTotals.totalTransportationDistance /
-          params.teaInputs.ElectricalFuelBaseYear.NetElectricalCapacity
+        dieselPerKwhElectricity: lcaTotals.totalDiesel / params.annualGeneration,
+        gasolinePerKwhElectricity: lcaTotals.totalGasoline / params.annualGeneration,
+        jetFuelPerKwhElectricity: lcaTotals.totalJetFuel / params.annualGeneration,
+        transportationDistance: lcaTotals.totalTransportationDistance / params.annualGeneration
       };
       console.log('running LCA...');
       const lca = await runLca(lcaInputs);
@@ -147,14 +165,17 @@ export const processClustersForYear = async (
       const fuelCost =
         (results.totalResidueCost + results.totalTransportationCost + results.totalMoveInCost) /
         results.totalBiomass;
+      // return updated fuel cost so that tea results can be updated later
       results.fuelCost = fuelCost;
-      const updatedTeaInputs = { ...params.teaInputs }; // copy original tea inputs
-      updatedTeaInputs.ExpensesBaseYear.BiomassFuelCost = fuelCost;
-      // but update using fuel cost calculated from frcs results
 
-      //   console.log('updating tea outputs...');
-      const updatedTeaOutputs: any = await getTeaOutputs(params.teaModel, updatedTeaInputs);
-      results.teaResults = updatedTeaOutputs;
+      const energyRevenueRequired = calculateEnergyRevenueRequired(
+        params.teaModel,
+        params.cashFlow
+      );
+      results.energyRevenueRequired = energyRevenueRequired;
+
+      const geoJson = await getGeoJson(db, results.clusterNumbers, results.clusters);
+      results.geoJson = geoJson;
 
       resolve(results);
     } catch (e) {
@@ -169,8 +190,8 @@ const getClusters = async (
   db: Knex,
   params: RequestParams,
   year: number,
-  usedIds: number[],
-  errorIds: number[],
+  usedIds: string[],
+  errorIds: string[],
   radius: number
 ): Promise<TreatedCluster[]> => {
   return new Promise(async (res, rej) => {
@@ -178,12 +199,26 @@ const getClusters = async (
       { latitude: params.lat, longitude: params.lng },
       radius // expand by 1 km at a time
     );
+    // if (radius < 5000) {
+    // console.log('--------------------------------------');
+    // console.log(
+    //   await db
+    //     .table('treatedclusters')
+    //     .where({ treatmentid: params.treatmentid, year: year })
+    //     .whereNotIn('cluster_no', [...usedIds, ...errorIds])
+    //     .whereBetween('landing_lat', [bounds[0].latitude, bounds[1].latitude])
+    //     .andWhereBetween('landing_lng', [bounds[0].longitude, bounds[1].longitude])
+    //     .toSQL()
+    //     .toNative()
+    // );
+    // console.log('--------------------------------------');
+    // }
     const clusters: TreatedCluster[] = await db
       .table('treatedclusters')
       .where({ treatmentid: params.treatmentid, year: year })
       .whereNotIn('cluster_no', [...usedIds, ...errorIds])
-      .whereBetween('landing_lat', [bounds[0].latitude, bounds[1].latitude])
-      .andWhereBetween('landing_lng', [bounds[0].longitude, bounds[1].longitude]);
+      .whereBetween('center_lat', [bounds[0].latitude, bounds[1].latitude])
+      .andWhereBetween('center_lng', [bounds[0].longitude, bounds[1].longitude]);
     res(clusters);
   });
 };
@@ -194,7 +229,9 @@ const selectClusters = async (
   biomassTarget: number,
   sortedClusters: TreatedCluster[],
   results: YearlyResult,
-  lcaTotals: LCATotals
+  lcaTotals: LCATotals,
+  usedIds: string[],
+  errorIds: string[]
 ) => {
   return new Promise(async (res, rej) => {
     for (const cluster of sortedClusters) {
@@ -207,14 +244,14 @@ const selectClusters = async (
             cluster,
             params.system,
             params.dieselFuelPrice,
-            params.teaInputs.ElectricalFuelBaseYear.MoistureContent
+            params.moistureContent
           );
 
           // use frcs calculated available feedstock
           const clusterBiomass = frcsResult.Residue.WeightPerAcre * cluster.area; // green tons
-          //   if (clusterBiomass < 1) {
-          //     throw new Error(`Cluster biomass was: ${clusterBiomass}, which is too low to use`);
-          //   }
+          if (clusterBiomass < 1) {
+            throw new Error(`Cluster biomass was: ${clusterBiomass}, which is too low to use`);
+          }
 
           const routeOptions: OSRM.RouteOptions = {
             coordinates: [
@@ -228,8 +265,8 @@ const selectClusters = async (
           const route: any = await getRouteDistanceAndDuration(osrm, routeOptions);
           // number of trips is how many truckloads it takes to transport biomass
           const numberOfTripsForTransportation = clusterBiomass / TONS_PER_TRUCK;
-          // multiply the osrm road distance by number of trips, and then by 2 because it's a round trip
-          let distance = route.distance * numberOfTripsForTransportation * 2;
+          // multiply the osrm road distance by number of trips, transportation eq doubles it for round trip
+          let distance = route.distance;
           distance = distance / 1000; // m to km
           const duration = route.duration / 3600; // seconds to hours
           const transportationCostPerGT = getTransportationCost(
@@ -238,6 +275,8 @@ const selectClusters = async (
             params.dieselFuelPrice
           );
           const transportationCostTotal = transportationCostPerGT * clusterBiomass;
+          const costPerKM =
+            transportationCostTotal / (distance * 2 * numberOfTripsForTransportation);
 
           results.totalBiomass += clusterBiomass;
           results.totalArea += cluster.area;
@@ -258,10 +297,18 @@ const selectClusters = async (
             residueCost: frcsResult.Residue.CostPerAcre * cluster.area,
             transportationCost: transportationCostTotal,
             frcsResult: frcsResult,
-            lat: cluster.center_lat,
-            lng: cluster.center_lng
+            center_lat: cluster.center_lat,
+            center_lng: cluster.center_lng,
+            landing_lat: cluster.landing_lat,
+            landing_lng: cluster.landing_lng,
+            county: cluster.county,
+            land_use: cluster.land_use,
+            haz_class: cluster.haz_class,
+            forest_type: cluster.forest_type,
+            site_class: cluster.sit_raster
           });
           results.clusterNumbers.push(cluster.cluster_no);
+          usedIds.push(cluster.cluster_no);
         } catch (err) {
           // swallow errors frcs throws and push the error message instead
           results.errorClusters.push({
@@ -272,6 +319,7 @@ const selectClusters = async (
             slope: cluster.slope
           });
           results.errorClusterNumbers.push(cluster.cluster_no);
+          errorIds.push(cluster.cluster_no);
         }
       }
     }
@@ -298,7 +346,7 @@ const getMoveInDistance = (
   facilityLng: number,
   clusters: ClusterResult[]
 ): Promise<number> => {
-  const clusterCoordinates = clusters.map(cluster => [cluster.lng, cluster.lat]);
+  const clusterCoordinates = clusters.map(cluster => [cluster.center_lng, cluster.center_lat]);
   //   console.log(JSON.stringify(clusterCoordinates));
   const options: OSRM.TripOptions = {
     roundtrip: true,
@@ -359,3 +407,62 @@ export const getTeaOutputs = async (type: string, inputs: any) => {
   }
   return result;
 };
+
+const getGeoJson = async (
+  db: Knex,
+  clusterNumbers: string[],
+  clusters: ClusterResult[]
+): Promise<any> => {
+  return new Promise(async (res, rej) => {
+    const clusterGeoJson: TreatedClustersInfo[] = await db
+      .table('treatedclustersInfo')
+      .whereIn('cluster_no', [...clusterNumbers])
+      .orderBy('cluster_no', 'asc');
+    const clusterGeoJsonClusterNumbers = clusterGeoJson.map(g => g.cluster_no);
+    const clustersCopy = [...clusters];
+    const clustersCopy2 = clustersCopy
+      .filter(onlyUnique)
+      .filter(x => clusterGeoJsonClusterNumbers.indexOf(x.cluster_no) > -1);
+    clustersCopy.sort((a, b) => {
+      return Number(a.cluster_no) - Number(b.cluster_no);
+    });
+    console.log(
+      `clusterNumbers: ${clusterNumbers.length}, clusters: ${clusters.length}, clusterGeoJson: ${clusterGeoJson.length}, clusterGeoJsonNumbers: ${clusterGeoJsonClusterNumbers.length} clusterCopy:${clustersCopy2.length}`
+    );
+    const features = clusterGeoJson.map((treatedClusterInfo, index) => {
+      // if (treatedClusterInfo.cluster_no !== clustersCopy[index].cluster_no) {
+      //   console.log(
+      //     `ERROR! cluster: ${clustersCopy[index].cluster_no}!==treatedClusterInfo: ${treatedClusterInfo.cluster_no}`
+      //   );
+      // }
+      const i =
+        treatedClusterInfo.cluster_no === clustersCopy[index].cluster_no
+          ? index
+          : clustersCopy.findIndex(a => a.cluster_no === treatedClusterInfo.cluster_no);
+      return {
+        ...treatedClusterInfo.geography,
+        properties: {
+          cluster_no: treatedClusterInfo.cluster_no,
+          lat: clusters[i].center_lat,
+          lng: clusters[i].center_lng,
+          area: clusters[i].area,
+          distance: clusters[i].distance,
+          biomass: clusters[i].biomass,
+          combinedCost: clusters[i].combinedCost,
+          residueCost: clusters[i].residueCost,
+          transportationCost: clusters[i].transportationCost
+        }
+      };
+    });
+    res(features);
+    // const featureCollection = {
+    //   type: 'FeatureCollection',
+    //   features: [...features]
+    // };
+    // res(featureCollection);
+  });
+};
+
+function onlyUnique(value: any, index: any, self: any) {
+  return self.indexOf(value) === index;
+}

@@ -3,7 +3,7 @@ const DRIVERS_PER_TRUCK = 1.67;
 const MILES_PER_GALLON = 6;
 const OIL_ETC_COST = 0.35; // $/mile
 export const KM_TO_MILES = 0.621371;
-export const TONS_PER_TRUCK = 17.33 * 1.10231; // changed from 18.5 due to updated 2020 data from GREET model
+export const TONS_PER_TRUCK = 25; // frcs assumption
 // 17.33 in metric tons, multiply by constant to get into short tons
 
 export const getTransportationCost = (distance: number, duration: number, fuelCost: number) => {

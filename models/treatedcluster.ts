@@ -1,5 +1,5 @@
 export interface TreatedCluster {
-  cluster_no: number;
+  cluster_no: string;
   treatmentid: number;
   landing_lat: number;
   landing_lng: number;
@@ -14,6 +14,8 @@ export interface TreatedCluster {
   forest_type: string;
   county: string;
   land_use: string;
+  haz_class: number;
+
   ba_15: number;
   ba_2: number;
   ba_25: number;

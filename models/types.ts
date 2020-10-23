@@ -1,6 +1,18 @@
 import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
-import { InputModCHP, InputModGP, InputModGPO } from '@ucdavis/tea/out/models/input.model';
-import { OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/out/models/output.model';
+import {
+  InputModCHP,
+  InputModGP,
+  InputModGPO,
+  InputModTransimission
+} from '@ucdavis/tea/out/models/input.model';
+import {
+  CashFlow,
+  CashFlowCHP,
+  CashFlowGP,
+  OutputModCHP,
+  OutputModGP,
+  OutputModGPO
+} from '@ucdavis/tea/out/models/output.model';
 import { LCAresults } from './lcaModels';
 
 export interface RequestParams {
@@ -9,24 +21,43 @@ export interface RequestParams {
   system: string;
   treatmentid: number;
   dieselFuelPrice: number; // $/gal
-  teaModel: string;
-  teaInputs: InputModGPO | InputModCHP | InputModGP; // | InputModHydrogen;
-}
-
-export interface RequestParamsYears extends RequestParams {
-  years: number[];
-}
-
-export interface RequestParamsYear extends RequestParams {
+  biomassTarget: number;
   year: number;
-  clusterIds: number[];
-  errorIds: number[];
+  clusterIds: string[];
+  errorIds: string[];
   radius: number;
+  teaModel: string;
+  annualGeneration: number; // used for LCA, kWh
+  moistureContent: number; // for frcs
+  cashFlow: CashFlow | CashFlowCHP | CashFlowGP;
 }
 
 export interface RequestParamsTest extends RequestParams {
   year: number;
   cluster_no: number;
+}
+
+export interface RequestParamsTestYears extends RequestParamsAllYears {
+  years: number[];
+}
+
+export interface RequestParamsAllYears {
+  facilityLat: number;
+  facilityLng: number;
+  transmission: InputModTransimission;
+  teaModel: string;
+  teaInputs: InputModGPO | InputModCHP | InputModGP; // | InputModHydrogen;
+  includeUnloadingCost: boolean;
+  unloadingCost: number; // default to 10,000
+}
+
+export interface AllYearsResults {
+  biomassTarget: number; // from tea output
+  annualGeneration: number;
+  teaResults?: OutputModGPO | OutputModCHP | OutputModGP;
+  transmissionResults?: any;
+  nearestSubstation: string;
+  distanceToNearestSubstation: number; // km
 }
 
 export interface Treatment {
@@ -50,8 +81,6 @@ export interface Results {
 export interface YearlyResult {
   year: number;
   lcaResults?: LCAresults;
-  teaResults?: OutputModGPO | OutputModCHP | OutputModGP;
-  biomassTarget: number; // from tea output
   totalBiomass: number; // total biomass from frcs residue output
   totalArea: number;
   totalResidueCost: number; // cost of harvesting residue biomass from frcs
@@ -59,12 +88,14 @@ export interface YearlyResult {
   totalMoveInDistance: number;
   totalTransportationCost: number; // transportation cost per gt * cluster biomass (distance from osrm)
   numberOfClusters: number;
-  clusterNumbers: number[];
+  clusterNumbers: string[];
   clusters: ClusterResult[];
   errorClusters: ClusterErrorResult[];
-  errorClusterNumbers: number[];
+  errorClusterNumbers: string[];
   radius: number;
   fuelCost: number;
+  energyRevenueRequired: number;
+  geoJson: any[];
 }
 
 export interface YearlyResultTest {
@@ -85,7 +116,7 @@ export interface YearlyResultTest {
 }
 
 export interface ClusterResult {
-  cluster_no: number;
+  cluster_no: string;
   biomass: number;
   combinedCost: number;
   area: number;
@@ -93,12 +124,19 @@ export interface ClusterResult {
   residueCost: number;
   transportationCost: number;
   frcsResult: OutputVarMod;
-  lat: number;
-  lng: number;
+  center_lat: number;
+  center_lng: number;
+  landing_lat: number;
+  landing_lng: number;
+  county: string;
+  land_use: string;
+  site_class: number;
+  forest_type: string;
+  haz_class: number;
 }
 
 export interface ClusterErrorResult {
-  cluster_no: number;
+  cluster_no: string;
   biomass: number;
   area: number;
   error: string;
@@ -115,4 +153,9 @@ export interface LCATotals {
   totalGasoline: number;
   totalJetFuel: number;
   totalTransportationDistance: number;
+}
+
+export interface TreatedClustersInfo {
+  cluster_no: string;
+  geography: JSON;
 }

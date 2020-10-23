@@ -13,53 +13,51 @@ export const getFrcsInputs = (
   dieselFuelPrice: number,
   moistureContent: number
 ) => {
-  // TODO: remove this function when we update our backend
-  const fixedClusterUnits = fixClusterUnits(cluster, cluster.area / PIXEL_AREA_TO_ACRES);
   const boleWeightCT =
-    calcBoleWeightCT(fixedClusterUnits) / // dry short tons
+    calcBoleWeightCT(cluster) / // dry short tons
     (1 - moistureContent / 100); // convert to green short tons
   // residue here only refers to the residue defined in FRCS - tops and limbs of log trees
   const residueWeightCT =
-    calcResidueWeightCT(fixedClusterUnits) / // dry short tons
+    calcResidueWeightCT(cluster) / // dry short tons
     (1 - moistureContent / 100); // convert to green short tons
   const residueFractionCT = residueWeightCT / boleWeightCT;
-  const volumeCT = calcVolumeCT(fixedClusterUnits);
-  const removalsCT = calcRemovalsCT(fixedClusterUnits);
+  const volumeCT = calcVolumeCT(cluster);
+  const removalsCT = calcRemovalsCT(cluster);
 
   const boleWeightSLT =
-    calcBoleWeightSLT(fixedClusterUnits) / // dry short tons
+    calcBoleWeightSLT(cluster) / // dry short tons
     (1 - moistureContent / 100); // convert to green short tons
   const residueWeightSLT =
-    calcResidueWeightSLT(fixedClusterUnits) / // dry short tons
+    calcResidueWeightSLT(cluster) / // dry short tons
     (1 - moistureContent / 100); // convert to green short tons
   const residueFractionSLT = residueWeightSLT / boleWeightSLT;
-  const volumeSLT = calcVolumeSLT(fixedClusterUnits);
-  const removalsSLT = calcRemovalsSLT(fixedClusterUnits);
+  const volumeSLT = calcVolumeSLT(cluster);
+  const removalsSLT = calcRemovalsSLT(cluster);
 
   const boleWeightLLT =
-    calcBoleWeightLLT(fixedClusterUnits) / // dry short tons
+    calcBoleWeightLLT(cluster) / // dry short tons
     (1 - moistureContent / 100); // convert to green short tons
   const residueWeightLLT =
-    calcResidueWeightLLT(fixedClusterUnits) / // dry short tons
+    calcResidueWeightLLT(cluster) / // dry short tons
     (1 - moistureContent / 100); // convert to green short tons
   const residueFractionLLT = residueWeightLLT / boleWeightLLT;
-  const volumeLLT = calcVolumeLLT(fixedClusterUnits, system);
-  const removalsLLT = calcRemovalsLLT(fixedClusterUnits, system);
+  const volumeLLT = calcVolumeLLT(cluster, system);
+  const removalsLLT = calcRemovalsLLT(cluster, system);
 
   const frcsInputs: InputVarMod = {
     System: system,
-    PartialCut: fixedClusterUnits.treatmentid === 1 ? false : true, // partial cut = false only on clear cut
+    PartialCut: cluster.treatmentid === 1 ? false : true, // partial cut = false only on clear cut
     DeliverDist:
       system === 'Helicopter Manual WT' || system === 'Helicopter CTL'
-        ? fixedClusterUnits.mean_yarding // if system is helicopter, use calculated mean_yarding
-        : fixedClusterUnits.mean_yarding * // otherwise convert straight line distance to distance along a slope
-          Math.sqrt(1 + Math.pow(fixedClusterUnits.slope / 100, 2)), // divide by 100 since slope is in %
-    Slope: !!fixedClusterUnits.slope ? fixedClusterUnits.slope : 0,
-    Elevation: !!fixedClusterUnits.center_elevation ? fixedClusterUnits.center_elevation : 0,
+        ? cluster.mean_yarding // if system is helicopter, use calculated mean_yarding
+        : // otherwise convert straight line distance to distance along a slope // divide by 100 since slope is in %
+          cluster.mean_yarding * Math.sqrt(1 + Math.pow(cluster.slope / 100, 2)),
+    Slope: !!cluster.slope ? cluster.slope : 0,
+    Elevation: !!cluster.center_elevation ? cluster.center_elevation : 0,
     CalcLoad: true, // always true
     CalcMoveIn: false, // always false, we calculate separately in getMoveInCosts function
     MoveInDist: 0,
-    Area: fixedClusterUnits.area,
+    Area: cluster.area,
     CalcResidues: true, // always true
     UserSpecWDCT: !volumeCT || !boleWeightCT ? 0 : boleWeightCT / volumeCT,
     UserSpecWDSLT: !volumeSLT || !boleWeightSLT ? 0 : boleWeightSLT / volumeSLT,
@@ -78,8 +76,7 @@ export const getFrcsInputs = (
     TreeVolLLT: !volumeLLT || !removalsLLT ? 0 : volumeLLT / removalsLLT,
     DieselFuelPrice: dieselFuelPrice,
     MoistureContent: moistureContent,
-    ChipAll:
-      fixedClusterUnits.treatmentid === 4 || fixedClusterUnits.treatmentid === 5 ? true : false
+    ChipAll: cluster.treatmentid === 4 || cluster.treatmentid === 5 ? true : false
     // true if treatment is timberSalvage or timberSalvageChipTree
   };
   return frcsInputs;
@@ -92,7 +89,7 @@ export const getFrcsInputsTest = (
   dieselFuelPrice: number,
   moistureContent: number
 ) => {
-  const fixedClusterUnits = fixClusterUnits(cluster, cluster.area / PIXEL_AREA_TO_ACRES);
+  const fixedClusterUnits = cluster;
   const boleWeightCT =
     calcBoleWeightCT(fixedClusterUnits) / // dry short tons
     (1 - moistureContent / 100); // convert to green short tons
