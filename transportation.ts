@@ -1,28 +1,12 @@
-const TRUCK_LABOR = 22.74;
+const TRUCK_LABOR = 23.29; // changed from 22.74 according to BLS 2019
 const DRIVERS_PER_TRUCK = 1.67;
 const MILES_PER_GALLON = 6;
-// TODO: pull from user input
-const FUEL_COST = 3.8; // use FRCS input
 const OIL_ETC_COST = 0.35; // $/mile
-const KM_TO_MILES = 0.621371;
+export const KM_TO_MILES = 0.621371;
+export const TONS_PER_TRUCK = 25; // frcs assumption
+// 17.33 in metric tons, multiply by constant to get into short tons
 
-const getTonsPerTruck = (material?: string) => {
-  //   if (material === 'bale') return 17; // tons/truck  @ 26 *  0.65445 tons/bale
-
-  //   if (material === 'bulk') return 19.9; // tons/truck @ 9.1 lb / ft 3
-
-  return 18.5;
-};
-
-export const getTransportationCost = (distance: number, duration: number) => {
-  //   const transportation = get(feature.properties.id);
-
-  //   if (transportation.error) {
-  //     return -1;
-  //   }
-
-  const tonsPerTruck = getTonsPerTruck();
-
+export const getTransportationCost = (distance: number, duration: number, fuelCost: number) => {
   const miles = distance * KM_TO_MILES;
 
   const hours = duration;
@@ -41,11 +25,11 @@ export const getTransportationCost = (distance: number, duration: number) => {
 
   const labor = DRIVERS_PER_TRUCK * TRUCK_LABOR * hours;
 
-  const fuel = (1 / MILES_PER_GALLON) * FUEL_COST * miles;
+  const fuel = (1 / MILES_PER_GALLON) * fuelCost * miles;
 
   let cost = OIL_ETC_COST * miles + fuel + labor;
 
-  cost = cost / tonsPerTruck;
+  cost = cost / TONS_PER_TRUCK;
 
   return cost * 2;
 };

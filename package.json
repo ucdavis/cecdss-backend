@@ -13,13 +13,14 @@
     "dev": "npm run build && node .",
     "watch": "nodemon --watch . -e ts --exec npm run dev",
     "start": "node ./index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run build && node ./test.js"
   },
   "dependencies": {
     "@types/cors": "^2.8.6",
-    "@ucdavis/frcs": "^1.0.11",
-    "@ucdavis/tea": "^1.0.8",
+    "@ucdavis/frcs": "^1.0.13",
+    "@ucdavis/tea": "^1.1.3",
     "body-parser": "^1.19.0",
+    "connect-timeout": "^1.9.0",
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
