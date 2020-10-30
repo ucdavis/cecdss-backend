@@ -1,5 +1,6 @@
 import { getMoveInCosts } from '@ucdavis/frcs';
 import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
+import { RunParams } from '@ucdavis/lca/out/lca.model';
 import {
   calculateEnergyRevenueRequired,
   gasificationPower,
@@ -12,7 +13,7 @@ import fetch from 'isomorphic-fetch';
 import Knex from 'knex';
 import OSRM from 'osrm';
 import { performance } from 'perf_hooks';
-import { LCAresults, LCARunParams } from './models/lcaModels';
+import { LCAresults } from './models/lcaModels';
 import { TreatedCluster } from './models/treatedcluster';
 import {
   ClusterResult,
@@ -42,9 +43,11 @@ export const processClustersForYear = async (
         year,
         clusterNumbers: [],
         numberOfClusters: 0,
-        totalBiomass: 0,
         totalArea: 0,
-        totalResidueCost: 0,
+        totalFeedstock: 0,
+        totalFeedstockCost: 0,
+        totalCoproduct: 0,
+        totalCoproductCost: 0,
         totalMoveInCost: 0,
         totalMoveInDistance: 0,
         totalTransportationCost: 0,
@@ -64,21 +67,21 @@ export const processClustersForYear = async (
         totalTransportationDistance: 0
       };
 
-      while (results.totalBiomass < biomassTarget) {
+      while (results.totalFeedstock < biomassTarget) {
         if (
           results.radius > 40000 &&
           results.clusters.length > 3800 &&
-          results.totalBiomass / biomassTarget < 0.1
+          results.totalFeedstock / biomassTarget < 0.1
         ) {
           console.log('radius large & not enough biomass');
           break;
         }
 
-        results.radius += 4000;
+        results.radius += 1000;
         console.log(
           `year:${year} getting clusters from db, radius: ${results.radius}, totalBiomass: ${
-            results.totalBiomass
-          }, biomassTarget: ${biomassTarget}, ${results.totalBiomass < biomassTarget} ...`
+            results.totalFeedstock
+          }, biomassTarget: ${biomassTarget}, ${results.totalFeedstock < biomassTarget} ...`
         );
         const clusters: TreatedCluster[] = await getClusters(
           db,
@@ -118,7 +121,7 @@ export const processClustersForYear = async (
       console.log(`calculating move in distance on ${results.clusters.length} clusters...`);
       let moveInDistance = 0;
       if (
-        results.totalBiomass > 0 &&
+        results.totalFeedstock > 0 &&
         results.clusters.length < 5000 &&
         params.treatmentid === 4 &&
         params.system === 'Ground-Based CTL'
@@ -132,7 +135,7 @@ export const processClustersForYear = async (
         );
       } else {
         console.log(
-          `skipping calculating move in distance, totalBiomass: ${results.totalBiomass}, # of clusters: ${results.clusters.length}`
+          `skipping calculating move in distance, totalBiomass: ${results.totalFeedstock}, # of clusters: ${results.clusters.length}`
         );
       }
 
@@ -149,22 +152,31 @@ export const processClustersForYear = async (
       results.totalMoveInCost = moveInCosts.Residue;
 
       results.numberOfClusters = results.clusterNumbers.length;
-      // console.log(results);
-      const lcaInputs: LCARunParams = {
+      console.log(lcaTotals);
+
+      const lcaInputs: RunParams = {
         technology: params.teaModel,
-        dieselPerKwhElectricity: lcaTotals.totalDiesel / params.annualGeneration,
-        gasolinePerKwhElectricity: lcaTotals.totalGasoline / params.annualGeneration,
-        jetFuelPerKwhElectricity: lcaTotals.totalJetFuel / params.annualGeneration,
-        transportationDistance: lcaTotals.totalTransportationDistance / params.annualGeneration
+        diesel: (1000 * lcaTotals.totalDiesel) / params.annualGeneration, // MWh
+        gasoline: (1000 * lcaTotals.totalGasoline) / params.annualGeneration, // MWh
+        jetfuel: (1000 * lcaTotals.totalJetFuel) / params.annualGeneration, // MWh
+        distance:
+          (1000 * lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration // MWh
       };
       console.log('running LCA...');
+      console.log('lcaInputs:');
+      console.log(lcaInputs);
+      console.log('lcaTotals:');
+      console.log(lcaTotals);
+      console.log(
+        `annualGeneration: ${params.annualGeneration}, radius: ${results.radius}, # of clusters: ${results.numberOfClusters}`
+      );
       const lca = await runLca(lcaInputs);
       // console.log(lca);
       results.lcaResults = lca;
       // $ / dry metric ton
       const fuelCost =
-        (results.totalResidueCost + results.totalTransportationCost + results.totalMoveInCost) /
-        results.totalBiomass;
+        (results.totalFeedstockCost + results.totalTransportationCost + results.totalMoveInCost) /
+        results.totalFeedstock;
       // return updated fuel cost so that tea results can be updated later
       results.fuelCost = fuelCost;
 
@@ -195,24 +207,7 @@ const getClusters = async (
   radius: number
 ): Promise<TreatedCluster[]> => {
   return new Promise(async (res, rej) => {
-    const bounds = getBoundsOfDistance(
-      { latitude: params.lat, longitude: params.lng },
-      radius // expand by 1 km at a time
-    );
-    // if (radius < 5000) {
-    // console.log('--------------------------------------');
-    // console.log(
-    //   await db
-    //     .table('treatedclusters')
-    //     .where({ treatmentid: params.treatmentid, year: year })
-    //     .whereNotIn('cluster_no', [...usedIds, ...errorIds])
-    //     .whereBetween('landing_lat', [bounds[0].latitude, bounds[1].latitude])
-    //     .andWhereBetween('landing_lng', [bounds[0].longitude, bounds[1].longitude])
-    //     .toSQL()
-    //     .toNative()
-    // );
-    // console.log('--------------------------------------');
-    // }
+    const bounds = getBoundsOfDistance({ latitude: params.lat, longitude: params.lng }, radius);
     const clusters: TreatedCluster[] = await db
       .table('treatedclusters')
       .where({ treatmentid: params.treatmentid, year: year })
@@ -235,7 +230,7 @@ const selectClusters = async (
 ) => {
   return new Promise(async (res, rej) => {
     for (const cluster of sortedClusters) {
-      if (results.totalBiomass >= biomassTarget) {
+      if (results.totalFeedstock >= biomassTarget) {
         // results.skippedClusters.push(cluster); // keeping for testing for now
         break;
       } else {
@@ -248,9 +243,11 @@ const selectClusters = async (
           );
 
           // use frcs calculated available feedstock
-          const clusterBiomass = frcsResult.Residue.WeightPerAcre * cluster.area; // green tons
-          if (clusterBiomass < 1) {
-            throw new Error(`Cluster biomass was: ${clusterBiomass}, which is too low to use`);
+          const clusterFeedstock = frcsResult.Residue.WeightPerAcre * cluster.area; // green tons
+          const clusterCoproduct =
+            (frcsResult.Total.WeightPerAcre - frcsResult.Residue.WeightPerAcre) * cluster.area; // green tons
+          if (clusterFeedstock < 1) {
+            throw new Error(`Cluster biomass was: ${clusterFeedstock}, which is too low to use`);
           }
 
           const routeOptions: OSRM.RouteOptions = {
@@ -264,7 +261,7 @@ const selectClusters = async (
           // currently distance is the osrm generated distance between each landing site and the facility location
           const route: any = await getRouteDistanceAndDuration(osrm, routeOptions);
           // number of trips is how many truckloads it takes to transport biomass
-          const numberOfTripsForTransportation = clusterBiomass / TONS_PER_TRUCK;
+          const numberOfTripsForTransportation = clusterFeedstock / TONS_PER_TRUCK;
           // multiply the osrm road distance by number of trips, transportation eq doubles it for round trip
           let distance = route.distance;
           distance = distance / 1000; // m to km
@@ -274,24 +271,27 @@ const selectClusters = async (
             duration,
             params.dieselFuelPrice
           );
-          const transportationCostTotal = transportationCostPerGT * clusterBiomass;
+          const transportationCostTotal = transportationCostPerGT * clusterFeedstock;
           const costPerKM =
             transportationCostTotal / (distance * 2 * numberOfTripsForTransportation);
 
-          results.totalBiomass += clusterBiomass;
+          results.totalFeedstock += clusterFeedstock;
+          results.totalFeedstockCost += frcsResult.Residue.CostPerAcre * cluster.area;
+          results.totalCoproduct += clusterCoproduct;
+          results.totalCoproductCost +=
+            (frcsResult.Total.CostPerAcre - frcsResult.Residue.CostPerAcre) * cluster.area;
+
           results.totalArea += cluster.area;
-          // results.totalCombinedCost += frcsResult.Total.CostPerAcre * cluster.area;
           results.totalTransportationCost += transportationCostTotal;
-          results.totalResidueCost += frcsResult.Residue.CostPerAcre * cluster.area;
           lcaTotals.totalDiesel += frcsResult.Residue.DieselPerAcre * cluster.area;
           lcaTotals.totalGasoline += frcsResult.Residue.GasolinePerAcre * cluster.area;
           lcaTotals.totalJetFuel += frcsResult.Residue.JetFuelPerAcre * cluster.area;
-          lcaTotals.totalTransportationDistance += distance;
+          lcaTotals.totalTransportationDistance += distance * 2 * numberOfTripsForTransportation;
 
           results.clusters.push({
             cluster_no: cluster.cluster_no,
             area: cluster.area,
-            biomass: clusterBiomass,
+            biomass: clusterFeedstock,
             distance: distance,
             combinedCost: frcsResult.Total.CostPerAcre * cluster.area,
             residueCost: frcsResult.Residue.CostPerAcre * cluster.area,
@@ -377,21 +377,17 @@ const getMoveInDistance = (
   });
 };
 
-export const runLca = async (inputs: LCARunParams) => {
-  const results: LCAresults = await fetch(
-    `https://lifecycle-analysis.azurewebsites.net/lcarun?technology=\
-         ${inputs.technology}&diesel=${inputs.dieselPerKwhElectricity}\
-         &gasoline=${inputs.gasolinePerKwhElectricity}\
-         &jetfuel=${inputs.jetFuelPerKwhElectricity}\
-         &distance=${inputs.transportationDistance}`,
-    {
-      mode: 'cors',
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
+export const runLca = async (inputs: RunParams) => {
+  const url = `https://lifecycle-analysis.azurewebsites.net/lcarun?technology=${inputs.technology}&diesel=${inputs.diesel}&gasoline=${inputs.gasoline}&jetfuel=${inputs.jetfuel}&distance=${inputs.distance}`;
+  console.log(url);
+  const results: LCAresults = await fetch(url, {
+    mode: 'cors',
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json'
     }
-  ).then(res => res.json());
+  }).then(res => res.json());
+  results.inputs = inputs;
   return results;
 };
 
@@ -450,7 +446,8 @@ const getGeoJson = async (
           biomass: clusters[i].biomass,
           combinedCost: clusters[i].combinedCost,
           residueCost: clusters[i].residueCost,
-          transportationCost: clusters[i].transportationCost
+          transportationCost: clusters[i].transportationCost,
+          land_use: clusters[i]
         }
       };
     });
