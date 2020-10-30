@@ -1,3 +1,4 @@
+import { RunParams } from '@ucdavis/lca/out/lca.model';
 import { transmission } from '@ucdavis/tea';
 import { InputModTransimission } from '@ucdavis/tea/out/models/input.model';
 import { OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/out/models/output.model';
@@ -18,7 +19,7 @@ import {
   RequestParamsAllYears,
   RequestParamsTest
 } from './models/types';
-import { getTeaOutputs, processClustersForYear } from './processYear';
+import { getTeaOutputs, processClustersForYear, runLca } from './processYear';
 import { testRunFrcsOnCluster } from './runFrcs';
 import { getTransportationCost, KM_TO_MILES } from './transportation';
 
@@ -100,7 +101,7 @@ app.post('/initialProcessing', async (req, res) => {
     Mountain: distanceAveraged
   };
   console.log(
-    `nearest substation: ${nearestSubstation.Substati_1} is ${distanceToNearestSubstation} miles away`
+    `nearest substation: ${nearestSubstation.substation_name} is ${distanceToNearestSubstation} miles away`
   );
   console.log(JSON.stringify(params));
   const transmissionResults = transmission(params.transmission);
@@ -131,11 +132,17 @@ app.post('/initialProcessing', async (req, res) => {
     transmissionResults: transmissionResults,
     teaResults: teaOutput,
     annualGeneration: annualGeneration,
-    nearestSubstation: nearestSubstation.Substati_1,
+    nearestSubstation: nearestSubstation.substation_name,
     distanceToNearestSubstation: distanceToNearestSubstationInM / 1000 // km
   };
 
   res.status(200).json(results);
+});
+
+app.post('/runLCA', async (req, res) => {
+  const params: RunParams = req.body;
+  const lca = await runLca(params);
+  res.status(200).json(lca);
 });
 
 app.post('/process', async (req, res) => {

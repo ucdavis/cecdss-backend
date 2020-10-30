@@ -81,9 +81,11 @@ export interface Results {
 export interface YearlyResult {
   year: number;
   lcaResults?: LCAresults;
-  totalBiomass: number; // total biomass from frcs residue output
   totalArea: number;
-  totalResidueCost: number; // cost of harvesting residue biomass from frcs
+  totalFeedstock: number; // total biomass from frcs residue output
+  totalFeedstockCost: number; // cost of harvesting residue biomass from frcs
+  totalCoproduct: number; // Frcs.Total - Frcs.Residue weight
+  totalCoproductCost: number;
   totalMoveInCost: number; // move in cost from separate frcs function
   totalMoveInDistance: number;
   totalTransportationCost: number; // transportation cost per gt * cluster biomass (distance from osrm)
@@ -95,7 +97,7 @@ export interface YearlyResult {
   radius: number;
   fuelCost: number;
   energyRevenueRequired: number;
-  geoJson: any[];
+  geoJson: any;
 }
 
 export interface YearlyResultTest {
