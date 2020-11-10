@@ -30,6 +30,7 @@ export interface RequestParams {
   annualGeneration: number; // used for LCA, kWh
   moistureContent: number; // for frcs
   cashFlow: CashFlow | CashFlowCHP | CashFlowGP;
+  costOfEquity: number;
 }
 
 export interface RequestParamsTest extends RequestParams {
@@ -55,6 +56,17 @@ export interface AllYearsResults {
   biomassTarget: number; // from tea output
   annualGeneration: number;
   teaResults?: OutputModGPO | OutputModCHP | OutputModGP;
+  teaInputs?: any;
+  transmissionResults?: any;
+  nearestSubstation: string;
+  distanceToNearestSubstation: number; // km
+}
+
+export interface AllYearsResultsPost {
+  biomassTarget: number; // from tea output
+  annualGeneration: number;
+  teaResults?: OutputModGPO | OutputModCHP | OutputModGP;
+  teaInputs?: any;
   transmissionResults?: any;
   nearestSubstation: string;
   distanceToNearestSubstation: number; // km
@@ -97,7 +109,10 @@ export interface YearlyResult {
   radius: number;
   fuelCost: number;
   energyRevenueRequired: number;
+  energyRevenueRequiredPW: number;
+  cashFlow: any;
   geoJson: any;
+  errorGeoJson: any;
 }
 
 export interface YearlyResultTest {

@@ -10,7 +10,7 @@ export interface TreatedCluster {
   slope: number;
   area: number;
   mean_yarding: number;
-  sit_raster: number;
+  site_class: number;
   forest_type: string;
   county: string;
   land_use: string;

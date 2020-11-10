@@ -3,11 +3,17 @@ import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
 import { RunParams } from '@ucdavis/lca/out/lca.model';
 import {
   calculateEnergyRevenueRequired,
+  calculateEnergyRevenueRequiredPW,
   gasificationPower,
   genericCombinedHeatPower,
   genericPowerOnly
 } from '@ucdavis/tea';
-import { OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/out/models/output.model';
+import {
+  CashFlow,
+  OutputModCHP,
+  OutputModGP,
+  OutputModGPO
+} from '@ucdavis/tea/out/models/output.model';
 import { getBoundsOfDistance, getDistance } from 'geolib';
 import fetch from 'isomorphic-fetch';
 import Knex from 'knex';
@@ -16,6 +22,7 @@ import { performance } from 'perf_hooks';
 import { LCAresults } from './models/lcaModels';
 import { TreatedCluster } from './models/treatedcluster';
 import {
+  ClusterErrorResult,
   ClusterResult,
   LCATotals,
   RequestParams,
@@ -57,7 +64,10 @@ export const processClustersForYear = async (
         errorClusterNumbers: [],
         fuelCost: 0,
         energyRevenueRequired: 0,
-        geoJson: []
+        energyRevenueRequiredPW: 0,
+        geoJson: [],
+        errorGeoJson: [],
+        cashFlow: {}
       };
 
       const lcaTotals: LCATotals = {
@@ -156,11 +166,10 @@ export const processClustersForYear = async (
 
       const lcaInputs: RunParams = {
         technology: params.teaModel,
-        diesel: (1000 * lcaTotals.totalDiesel) / params.annualGeneration, // MWh
-        gasoline: (1000 * lcaTotals.totalGasoline) / params.annualGeneration, // MWh
-        jetfuel: (1000 * lcaTotals.totalJetFuel) / params.annualGeneration, // MWh
-        distance:
-          (1000 * lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration // MWh
+        diesel: lcaTotals.totalDiesel / params.annualGeneration, // MWh
+        gasoline: lcaTotals.totalGasoline / params.annualGeneration, // MWh
+        jetfuel: lcaTotals.totalJetFuel / params.annualGeneration, // MWh
+        distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration // MWh
       };
       console.log('running LCA...');
       console.log('lcaInputs:');
@@ -180,14 +189,32 @@ export const processClustersForYear = async (
       // return updated fuel cost so that tea results can be updated later
       results.fuelCost = fuelCost;
 
+      const cashFlow: CashFlow = params.cashFlow;
+      cashFlow.BiomassFuelCost = fuelCost * params.biomassTarget;
       const energyRevenueRequired = calculateEnergyRevenueRequired(
         params.teaModel,
         params.cashFlow
       );
       results.energyRevenueRequired = energyRevenueRequired;
+      cashFlow.EnergyRevenueRequired = energyRevenueRequired;
+      const energyRevenueRequiredPresent = calculateEnergyRevenueRequiredPW(
+        params.year - 2020 + 1,
+        params.costOfEquity,
+        energyRevenueRequired
+      );
+      console.log(`energyRevenueRequiredPW: ${energyRevenueRequiredPresent}`);
+      results.energyRevenueRequiredPW = energyRevenueRequiredPresent;
+
+      results.cashFlow = cashFlow;
 
       const geoJson = await getGeoJson(db, results.clusterNumbers, results.clusters);
       results.geoJson = geoJson;
+      const errorGeoJson = await getErrorGeoJson(
+        db,
+        results.errorClusterNumbers,
+        results.errorClusters
+      );
+      results.errorGeoJson = errorGeoJson;
 
       resolve(results);
     } catch (e) {
@@ -210,7 +237,7 @@ const getClusters = async (
     const bounds = getBoundsOfDistance({ latitude: params.lat, longitude: params.lng }, radius);
     const clusters: TreatedCluster[] = await db
       .table('treatedclusters')
-      .where({ treatmentid: params.treatmentid, year: year })
+      .where({ treatmentid: params.treatmentid }) // , year: year })
       .whereNotIn('cluster_no', [...usedIds, ...errorIds])
       .whereBetween('center_lat', [bounds[0].latitude, bounds[1].latitude])
       .andWhereBetween('center_lng', [bounds[0].longitude, bounds[1].longitude]);
@@ -305,7 +332,7 @@ const selectClusters = async (
             land_use: cluster.land_use,
             haz_class: cluster.haz_class,
             forest_type: cluster.forest_type,
-            site_class: cluster.sit_raster
+            site_class: cluster.site_class
           });
           results.clusterNumbers.push(cluster.cluster_no);
           usedIds.push(cluster.cluster_no);
@@ -388,6 +415,7 @@ export const runLca = async (inputs: RunParams) => {
     }
   }).then(res => res.json());
   results.inputs = inputs;
+
   return results;
 };
 
@@ -414,23 +442,11 @@ const getGeoJson = async (
       .table('treatedclustersInfo')
       .whereIn('cluster_no', [...clusterNumbers])
       .orderBy('cluster_no', 'asc');
-    const clusterGeoJsonClusterNumbers = clusterGeoJson.map(g => g.cluster_no);
     const clustersCopy = [...clusters];
-    const clustersCopy2 = clustersCopy
-      .filter(onlyUnique)
-      .filter(x => clusterGeoJsonClusterNumbers.indexOf(x.cluster_no) > -1);
     clustersCopy.sort((a, b) => {
       return Number(a.cluster_no) - Number(b.cluster_no);
     });
-    console.log(
-      `clusterNumbers: ${clusterNumbers.length}, clusters: ${clusters.length}, clusterGeoJson: ${clusterGeoJson.length}, clusterGeoJsonNumbers: ${clusterGeoJsonClusterNumbers.length} clusterCopy:${clustersCopy2.length}`
-    );
     const features = clusterGeoJson.map((treatedClusterInfo, index) => {
-      // if (treatedClusterInfo.cluster_no !== clustersCopy[index].cluster_no) {
-      //   console.log(
-      //     `ERROR! cluster: ${clustersCopy[index].cluster_no}!==treatedClusterInfo: ${treatedClusterInfo.cluster_no}`
-      //   );
-      // }
       const i =
         treatedClusterInfo.cluster_no === clustersCopy[index].cluster_no
           ? index
@@ -438,28 +454,40 @@ const getGeoJson = async (
       return {
         ...treatedClusterInfo.geography,
         properties: {
-          cluster_no: treatedClusterInfo.cluster_no,
-          lat: clusters[i].center_lat,
-          lng: clusters[i].center_lng,
-          area: clusters[i].area,
-          distance: clusters[i].distance,
-          biomass: clusters[i].biomass,
-          combinedCost: clusters[i].combinedCost,
-          residueCost: clusters[i].residueCost,
-          transportationCost: clusters[i].transportationCost,
-          land_use: clusters[i]
+          ...clusters[i]
         }
       };
     });
     res(features);
-    // const featureCollection = {
-    //   type: 'FeatureCollection',
-    //   features: [...features]
-    // };
-    // res(featureCollection);
   });
 };
 
-function onlyUnique(value: any, index: any, self: any) {
-  return self.indexOf(value) === index;
-}
+const getErrorGeoJson = async (
+  db: Knex,
+  clusterNumbers: string[],
+  clusters: ClusterErrorResult[]
+): Promise<any> => {
+  return new Promise(async (res, rej) => {
+    const clusterGeoJson: TreatedClustersInfo[] = await db
+      .table('treatedclustersInfo')
+      .whereIn('cluster_no', [...clusterNumbers])
+      .orderBy('cluster_no', 'asc');
+    const clustersCopy = [...clusters];
+    clustersCopy.sort((a, b) => {
+      return Number(a.cluster_no) - Number(b.cluster_no);
+    });
+    const features = clusterGeoJson.map((treatedClusterInfo, index) => {
+      const i =
+        treatedClusterInfo.cluster_no === clustersCopy[index].cluster_no
+          ? index
+          : clustersCopy.findIndex(a => a.cluster_no === treatedClusterInfo.cluster_no);
+      return {
+        ...treatedClusterInfo.geography,
+        properties: {
+          ...clusters[i]
+        }
+      };
+    });
+    res(features);
+  });
+};
