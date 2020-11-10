@@ -103,11 +103,13 @@ app.post('/initialProcessing', async (req, res) => {
   console.log(
     `nearest substation: ${nearestSubstation.substation_name} is ${distanceToNearestSubstation} miles away`
   );
-  console.log(JSON.stringify(params));
   const transmissionResults = transmission(params.transmission);
 
   const additionalCosts =
     transmissionResults.AllCost + (params.includeUnloadingCost ? params.unloadingCost : 0);
+  console.log(
+    `additionalCosts: ${additionalCosts}: ${transmissionResults.AllCost}, ${params.includeUnloadingCost}: ${params.unloadingCost}`
+  );
   const teaInputs: any = { ...params.teaInputs };
   if (params.teaModel === 'GP') {
     // GP capital costs will be summed in TEA function anyway, so we can just add it to one property
@@ -115,6 +117,7 @@ app.post('/initialProcessing', async (req, res) => {
   } else {
     teaInputs.CapitalCost += additionalCosts;
   }
+  console.log(JSON.stringify(teaInputs));
   // TODO: use separate TEA endpoint just to get biomass target
   const teaOutput: OutputModGPO | OutputModCHP | OutputModGP = await getTeaOutputs(
     params.teaModel,
@@ -131,6 +134,7 @@ app.post('/initialProcessing', async (req, res) => {
     biomassTarget: biomassTarget,
     transmissionResults: transmissionResults,
     teaResults: teaOutput,
+    teaInputs: teaInputs,
     annualGeneration: annualGeneration,
     nearestSubstation: nearestSubstation.substation_name,
     distanceToNearestSubstation: distanceToNearestSubstationInM / 1000 // km
@@ -138,6 +142,13 @@ app.post('/initialProcessing', async (req, res) => {
 
   res.status(200).json(results);
 });
+
+// app.post('/postProcessing', async(req, res) => {
+//   console.log('running post processing...')
+//   const params: RequestParamsAllYearsPost = req.body;
+
+//   res.status(200).json(results);
+// })
 
 app.post('/runLCA', async (req, res) => {
   const params: RunParams = req.body;
