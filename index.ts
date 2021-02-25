@@ -37,6 +37,7 @@ console.log('connecting to db', process.env.DB_HOST);
 // https://knexjs.org/
 const db = knex({
   client: 'pg',
+  debug: true,
   connection: {
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -113,7 +114,7 @@ app.post('/initialProcessing', async (req, res) => {
   const teaInputs: any = { ...params.teaInputs };
   if (params.teaModel === 'GP') {
     // GP capital costs will be summed in TEA function anyway, so we can just add it to one property
-    teaInputs.CapitalCost.GasifierSystemCapitalCost += additionalCosts;
+    teaInputs.CapitalCostElements.GasifierSystemCapitalCost += additionalCosts;
   } else {
     teaInputs.CapitalCost += additionalCosts;
   }
