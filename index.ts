@@ -113,7 +113,7 @@ app.post('/initialProcessing', async (req, res) => {
   const teaInputs: any = { ...params.teaInputs };
   if (params.teaModel === 'GP') {
     // GP capital costs will be summed in TEA function anyway, so we can just add it to one property
-    teaInputs.CapitalCost.GasifierSystemCapitalCost += additionalCosts;
+    teaInputs.CapitalCostElements.GasifierSystemCapitalCost += additionalCosts;
   } else {
     teaInputs.CapitalCost += additionalCosts;
   }
