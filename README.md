@@ -9,7 +9,7 @@ Program to integrate processed F3 data with FRCS, TEA
 ### Node setup
 
 1. Make sure you are using node v10
-1. `npm install` the dependencies
+1. `npm install` the dependencies. (You may have to `npm rebuild` if you are having problems with osrm bindings)
 
 ### Config setup
 
