@@ -13,6 +13,7 @@ import {
   OutputModGP,
   OutputModGPO
 } from '@ucdavis/tea/out/models/output.model';
+import OSRM from 'osrm';
 import { LCAresults } from './lcaModels';
 
 export interface RequestParams {
@@ -90,7 +91,13 @@ export interface Results {
   radius: number;
 }
 
+export interface YearlyTripResults {
+  trips: OSRM.Route[];
+  distance: number;
+}
+
 export interface YearlyResult {
+  trips: OSRM.Route[];
   year: number;
   lcaResults?: LCAresults;
   totalArea: number;

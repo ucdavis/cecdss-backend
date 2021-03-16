@@ -37,7 +37,7 @@ console.log('connecting to db', process.env.DB_HOST);
 // https://knexjs.org/
 const db = knex({
   client: 'pg',
-  debug: true,
+  debug: false,
   connection: {
     host: process.env.DB_HOST,
     user: process.env.DB_USER,

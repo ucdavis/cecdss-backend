@@ -6,13 +6,13 @@ import {
   calculateEnergyRevenueRequiredPW,
   gasificationPower,
   genericCombinedHeatPower,
-  genericPowerOnly
+  genericPowerOnly,
 } from '@ucdavis/tea';
 import {
   CashFlow,
   OutputModCHP,
   OutputModGP,
-  OutputModGPO
+  OutputModGPO,
 } from '@ucdavis/tea/out/models/output.model';
 import { getBoundsOfDistance, getDistance } from 'geolib';
 import fetch from 'isomorphic-fetch';
@@ -28,10 +28,14 @@ import {
   RequestParams,
   TreatedClustersInfo,
   YearlyResult,
-  YearlyResultTest
 } from './models/types';
 import { runFrcsOnCluster } from './runFrcs';
-import { getTransportationCost, KM_TO_MILES, TONS_PER_TRUCK } from './transportation';
+import {
+  getMoveInTrip,
+  getTransportationCost,
+  KM_TO_MILES,
+  TONS_PER_TRUCK,
+} from './transportation';
 
 export const processClustersForYear = async (
   db: Knex,
@@ -58,6 +62,7 @@ export const processClustersForYear = async (
         totalMoveInCost: 0,
         totalMoveInDistance: 0,
         totalTransportationCost: 0,
+        trips: [],
         radius,
         clusters: [],
         errorClusters: [],
@@ -67,14 +72,14 @@ export const processClustersForYear = async (
         energyRevenueRequiredPW: 0,
         geoJson: [],
         errorGeoJson: [],
-        cashFlow: {}
+        cashFlow: {},
       };
 
       const lcaTotals: LCATotals = {
         totalDiesel: 0,
         totalGasoline: 0,
         totalJetFuel: 0,
-        totalTransportationDistance: 0
+        totalTransportationDistance: 0,
       };
 
       while (results.totalFeedstock < biomassTarget) {
@@ -129,6 +134,16 @@ export const processClustersForYear = async (
       }
 
       console.log(`calculating move in distance on ${results.clusters.length} clusters...`);
+      const t0 = performance.now();
+      const moveInTripResults = await getMoveInTrip(osrm, params.lat, params.lng, results.clusters);
+      const t1 = performance.now();
+      console.log(
+        `Running took ${t1 - t0} milliseconds, move in distance: ${moveInTripResults.distance}.`
+      );
+
+      results.trips = moveInTripResults.trips;
+
+      // we only update the move in distance if it is applicable for this type of treatment & system
       let moveInDistance = 0;
       if (
         results.totalFeedstock > 0 &&
@@ -136,16 +151,11 @@ export const processClustersForYear = async (
         params.treatmentid === 4 &&
         params.system === 'Ground-Based CTL'
       ) {
-        const t0 = performance.now();
-        moveInDistance = await getMoveInDistance(osrm, params.lat, params.lng, results.clusters);
-        const t1 = performance.now();
-        console.log(
-          `Running took ${t1 - t0} milliseconds, move in distance: ${moveInDistance}.
-                  calculating move in cost...`
-        );
+        console.log('updating move in distance of');
+        moveInDistance = moveInTripResults.distance;
       } else {
         console.log(
-          `skipping calculating move in distance, totalBiomass: ${results.totalFeedstock}, # of clusters: ${results.clusters.length}`
+          `skipping updating move in distance, totalBiomass: ${results.totalFeedstock}, # of clusters: ${results.clusters.length}`
         );
       }
 
@@ -153,7 +163,7 @@ export const processClustersForYear = async (
         System: params.system,
         MoveInDist: moveInDistance,
         DieselFuelPrice: params.dieselFuelPrice,
-        ChipAll: params.treatmentid === 4 ? true : false // true if treatment is timberSalvage
+        ChipAll: params.treatmentid === 4 ? true : false, // true if treatment is timberSalvage
       });
 
       console.log(`move in cost: ${moveInCosts.Residue}`);
@@ -169,7 +179,7 @@ export const processClustersForYear = async (
         diesel: lcaTotals.totalDiesel / params.annualGeneration, // MWh
         gasoline: lcaTotals.totalGasoline / params.annualGeneration, // MWh
         jetfuel: lcaTotals.totalJetFuel / params.annualGeneration, // MWh
-        distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration // MWh
+        distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration, // MWh
       };
       console.log('running LCA...');
       console.log('lcaInputs:');
@@ -255,7 +265,7 @@ const selectClusters = async (
   usedIds: string[],
   errorIds: string[]
 ) => {
-  return new Promise(async (res, rej) => {
+  return new Promise<void>(async (res, rej) => {
     for (const cluster of sortedClusters) {
       if (results.totalFeedstock >= biomassTarget) {
         // results.skippedClusters.push(cluster); // keeping for testing for now
@@ -280,9 +290,9 @@ const selectClusters = async (
           const routeOptions: OSRM.RouteOptions = {
             coordinates: [
               [params.lng, params.lat],
-              [cluster.landing_lng, cluster.landing_lat]
+              [cluster.landing_lng, cluster.landing_lat],
             ],
-            annotations: ['duration', 'distance']
+            annotations: ['duration', 'distance'],
           };
 
           // currently distance is the osrm generated distance between each landing site and the facility location
@@ -332,7 +342,7 @@ const selectClusters = async (
             land_use: cluster.land_use,
             haz_class: cluster.haz_class,
             forest_type: cluster.forest_type,
-            site_class: cluster.site_class
+            site_class: cluster.site_class,
           });
           results.clusterNumbers.push(cluster.cluster_no);
           usedIds.push(cluster.cluster_no);
@@ -343,7 +353,7 @@ const selectClusters = async (
             area: cluster.area,
             biomass: 0,
             error: err.message,
-            slope: cluster.slope
+            slope: cluster.slope,
           });
           results.errorClusterNumbers.push(cluster.cluster_no);
           errorIds.push(cluster.cluster_no);
@@ -367,43 +377,6 @@ const getRouteDistanceAndDuration = (osrm: OSRM, routeOptions: OSRM.RouteOptions
   });
 };
 
-const getMoveInDistance = (
-  osrm: OSRM,
-  facilityLat: number,
-  facilityLng: number,
-  clusters: ClusterResult[]
-): Promise<number> => {
-  const clusterCoordinates = clusters.map(cluster => [cluster.center_lng, cluster.center_lat]);
-  //   console.log(JSON.stringify(clusterCoordinates));
-  const options: OSRM.TripOptions = {
-    roundtrip: true,
-    generate_hints: false,
-    // overview: 'false',
-    source: 'first',
-    coordinates: [
-      [facilityLng, facilityLat], // start at facility
-      ...clusterCoordinates
-    ]
-  };
-
-  return new Promise((resolve, reject) => {
-    if (clusters.length === 0) {
-      resolve(0);
-    }
-    osrm.trip(options, async (err, result) => {
-      if (err) {
-        console.log('rejecting move in...');
-        console.log(err);
-        reject(err);
-      }
-      const osrmDistance = result.trips.reduce((dist, trip) => dist + trip.distance, 0);
-      // const osrmDuration = result.trips.reduce((dur, trip) => dur + trip.duration, 0);
-      console.log('resolving move in...');
-      resolve((osrmDistance / 1000) * KM_TO_MILES);
-    });
-  });
-};
-
 export const runLca = async (inputs: RunParams) => {
   const url = `https://lifecycle-analysis.azurewebsites.net/lcarun?technology=${inputs.technology}&diesel=${inputs.diesel}&gasoline=${inputs.gasoline}&jetfuel=${inputs.jetfuel}&distance=${inputs.distance}`;
   console.log(url);
@@ -411,9 +384,9 @@ export const runLca = async (inputs: RunParams) => {
     mode: 'cors',
     method: 'GET',
     headers: {
-      'Content-Type': 'application/json'
-    }
-  }).then(res => res.json());
+      'Content-Type': 'application/json',
+    },
+  }).then((res) => res.json());
   results.inputs = inputs;
 
   return results;
@@ -450,12 +423,12 @@ const getGeoJson = async (
       const i =
         treatedClusterInfo.cluster_no === clustersCopy[index].cluster_no
           ? index
-          : clustersCopy.findIndex(a => a.cluster_no === treatedClusterInfo.cluster_no);
+          : clustersCopy.findIndex((a) => a.cluster_no === treatedClusterInfo.cluster_no);
       return {
         ...treatedClusterInfo.geography,
         properties: {
-          ...clusters[i]
-        }
+          ...clusters[i],
+        },
       };
     });
     res(features);
@@ -480,12 +453,12 @@ const getErrorGeoJson = async (
       const i =
         treatedClusterInfo.cluster_no === clustersCopy[index].cluster_no
           ? index
-          : clustersCopy.findIndex(a => a.cluster_no === treatedClusterInfo.cluster_no);
+          : clustersCopy.findIndex((a) => a.cluster_no === treatedClusterInfo.cluster_no);
       return {
         ...treatedClusterInfo.geography,
         properties: {
-          ...clusters[i]
-        }
+          ...clusters[i],
+        },
       };
     });
     res(features);
