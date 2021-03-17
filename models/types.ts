@@ -97,7 +97,7 @@ export interface YearlyTripResults {
 }
 
 export interface YearlyResult {
-  trips: OSRM.Route[];
+  tripGeometries: Geometry[];
   year: number;
   lcaResults?: LCAresults;
   totalArea: number;
@@ -170,6 +170,11 @@ export interface ClusterErrorResult {
 export interface Bounds {
   latitude: number;
   longitude: number;
+}
+
+export interface Geometry {
+  coodinates: number[][];
+  type: string;
 }
 
 export interface LCATotals {

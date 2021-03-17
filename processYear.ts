@@ -62,7 +62,7 @@ export const processClustersForYear = async (
         totalMoveInCost: 0,
         totalMoveInDistance: 0,
         totalTransportationCost: 0,
-        trips: [],
+        tripGeometries: [],
         radius,
         clusters: [],
         errorClusters: [],
@@ -141,7 +141,7 @@ export const processClustersForYear = async (
         `Running took ${t1 - t0} milliseconds, move in distance: ${moveInTripResults.distance}.`
       );
 
-      results.trips = moveInTripResults.trips;
+      results.tripGeometries = moveInTripResults.trips.map(t => t.geometry);
 
       // we only update the move in distance if it is applicable for this type of treatment & system
       let moveInDistance = 0;
