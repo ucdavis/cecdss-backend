@@ -64,6 +64,10 @@ export const processClustersForYear = async (
         totalMoveInCost: 0,
         totalMoveInDistance: 0,
         totalTransportationCost: 0,
+        harvestCostPerDryTon: 0,
+        transportationCostPerDryTon: 0,
+        moveInCostPerDryTon: 0,
+        totalCostPerDryTon: 0,
         tripGeometries: [],
         radius,
         clusters: [],
@@ -208,9 +212,12 @@ export const processClustersForYear = async (
       results.totalDryCoproduct = results.totalCoproduct * (1 - moistureContentPercentage);
 
       results.harvestCostPerDryTon = results.totalFeedstockCost / results.totalDryFeedstock;
-      results.transportationCostPerDryTon = results.totalTransportationCost / results.totalDryFeedstock;
+      results.transportationCostPerDryTon =
+        results.totalTransportationCost / results.totalDryFeedstock;
       results.moveInCostPerDryTon = results.totalMoveInCost / results.totalDryFeedstock;
-      results.totalCostPerDryTon = results.fuelCost / results.totalDryFeedstock;
+      results.totalCostPerDryTon =
+        (results.totalFeedstockCost + results.totalTransportationCost + results.totalMoveInCost) /
+        results.totalDryFeedstock;
 
       const cashFlow: CashFlow = params.cashFlow;
       cashFlow.BiomassFuelCost = fuelCost * params.biomassTarget;
