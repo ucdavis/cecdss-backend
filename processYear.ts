@@ -56,8 +56,10 @@ export const processClustersForYear = async (
         numberOfClusters: 0,
         totalArea: 0,
         totalFeedstock: 0,
+        totalDryFeedstock: 0,
         totalFeedstockCost: 0,
         totalCoproduct: 0,
+        totalDryCoproduct: 0,
         totalCoproductCost: 0,
         totalMoveInCost: 0,
         totalMoveInDistance: 0,
@@ -192,12 +194,23 @@ export const processClustersForYear = async (
       const lca = await runLca(lcaInputs);
       // console.log(lca);
       results.lcaResults = lca;
-      // $ / dry metric ton
+      // $ / wet metric ton
       const fuelCost =
         (results.totalFeedstockCost + results.totalTransportationCost + results.totalMoveInCost) /
         results.totalFeedstock;
       // return updated fuel cost so that tea results can be updated later
       results.fuelCost = fuelCost;
+
+      const moistureContentPercentage = params.moistureContent / 100.0;
+
+      // calculate dry values ($ / dry metric ton)
+      results.totalDryFeedstock = results.totalFeedstock * (1 - moistureContentPercentage);
+      results.totalDryCoproduct = results.totalCoproduct * (1 - moistureContentPercentage);
+
+      results.harvestCostPerDryTon = results.totalFeedstockCost / results.totalDryFeedstock;
+      results.transportationCostPerDryTon = results.totalTransportationCost / results.totalDryFeedstock;
+      results.moveInCostPerDryTon = results.totalMoveInCost / results.totalDryFeedstock;
+      results.totalCostPerDryTon = results.fuelCost / results.totalDryFeedstock;
 
       const cashFlow: CashFlow = params.cashFlow;
       cashFlow.BiomassFuelCost = fuelCost * params.biomassTarget;
