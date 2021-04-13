@@ -10,21 +10,21 @@ export const TONS_PER_TRUCK = 25; // frcs assumption
 // 17.33 in metric tons, multiply by constant to get into short tons
 
 export const getTransportationCost = (distance: number, duration: number, fuelCost: number) => {
-  const miles = distance * KM_TO_MILES;
-
-  const hours = duration;
-
   /*
 
-      2* cause you have to drive back
+    2* cause you have to drive back
 
-      1.67 cause a driver costs you 67% more than salary in benefits and overhead
+    1.67 cause a driver costs you 67% more than salary in benefits and overhead
 
-      1/6 cause you get 6 MPG
+    1/6 cause you get 6 MPG
 
-      0.29 Depreciation, repair and maintenance of truck
+    0.29 Depreciation, repair and maintenance of truck
 
-    */
+  */
+
+  const miles = distance * KM_TO_MILES * 2;
+
+  const hours = duration * 2;
 
   const labor = DRIVERS_PER_TRUCK * TRUCK_LABOR * hours;
 
@@ -32,9 +32,9 @@ export const getTransportationCost = (distance: number, duration: number, fuelCo
 
   let cost = OIL_ETC_COST * miles + fuel + labor;
 
-  cost = cost / TONS_PER_TRUCK;
+  cost = cost / TONS_PER_TRUCK + 1.11; // add $1.11 fixed cost to avoid unrealistic cost when distance is small
 
-  return cost * 2;
+  return cost;
 };
 
 export const getMoveInTrip = (
