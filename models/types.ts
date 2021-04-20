@@ -17,6 +17,8 @@ import OSRM from 'osrm';
 import { LCAresults } from './lcaModels';
 
 export interface RequestParams {
+  facilityLat: number;
+  facilityLng: number;
   lat: number;
   lng: number;
   system: string;
