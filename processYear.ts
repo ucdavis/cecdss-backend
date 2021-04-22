@@ -48,7 +48,12 @@ export const processClustersForYear = async (
   errorIds: string[]
 ): Promise<YearlyResult> => {
   return new Promise(async (resolve, reject) => {
-    // console.log(`year: ${year}, usedIds: ${usedIds}`);
+    if (!params.facilityLat || !params.facilityLng) {
+      // if we don't have valid facility location, assume provided biomass location is also where facility is
+      params.facilityLat = params.lat;
+      params.facilityLng = params.lng;
+    }
+
     try {
       const results: YearlyResult = {
         year,
@@ -141,13 +146,13 @@ export const processClustersForYear = async (
 
       console.log(`calculating move in distance on ${results.clusters.length} clusters...`);
       const t0 = performance.now();
-      const moveInTripResults = await getMoveInTrip(osrm, params.lat, params.lng, results.clusters);
+      const moveInTripResults = await getMoveInTrip(osrm, params.facilityLat, params.facilityLng, results.clusters);
       const t1 = performance.now();
       console.log(
         `Running took ${t1 - t0} milliseconds, move in distance: ${moveInTripResults.distance}.`
       );
 
-      results.tripGeometries = moveInTripResults.trips.map(t => t.geometry);
+      results.tripGeometries = moveInTripResults.trips.map((t) => t.geometry);
 
       // we only update the move in distance if it is applicable for this type of treatment & system
       let moveInDistance = 0;
@@ -309,7 +314,7 @@ const selectClusters = async (
 
           const routeOptions: OSRM.RouteOptions = {
             coordinates: [
-              [params.lng, params.lat],
+              [params.facilityLng, params.facilityLat],
               [cluster.landing_lng, cluster.landing_lat],
             ],
             annotations: ['duration', 'distance'],
