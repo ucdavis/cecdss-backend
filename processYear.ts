@@ -1,5 +1,6 @@
 import { getMoveInCosts } from '@ucdavis/frcs';
 import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
+import { runLCA } from '@ucdavis/lca';
 import { RunParams } from '@ucdavis/lca/out/lca.model';
 import {
   calculateEnergyRevenueRequired,
@@ -195,7 +196,7 @@ export const processClustersForYear = async (
       console.log(
         `annualGeneration: ${params.annualGeneration}, radius: ${results.radius}, # of clusters: ${results.numberOfClusters}`
       );
-      const lca = await runLca(lcaInputs);
+      const lca = await runLCA(lcaInputs);
       // console.log(lca);
       results.lcaResults = lca;
       // $ / wet metric ton
@@ -395,21 +396,6 @@ const getRouteDistanceAndDuration = (osrm: OSRM, routeOptions: OSRM.RouteOptions
       resolve({ distance, duration });
     });
   });
-};
-
-export const runLca = async (inputs: RunParams) => {
-  const url = `https://lifecycle-analysis.azurewebsites.net/lcarun?technology=${inputs.technology}&diesel=${inputs.diesel}&gasoline=${inputs.gasoline}&jetfuel=${inputs.jetfuel}&distance=${inputs.distance}`;
-  console.log(url);
-  const results: LCAresults = await fetch(url, {
-    mode: 'cors',
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  }).then((res) => res.json());
-  results.inputs = inputs;
-
-  return results;
 };
 
 export const getTeaOutputs = async (type: string, inputs: any) => {
