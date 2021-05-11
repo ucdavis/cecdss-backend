@@ -18,7 +18,7 @@
   "dependencies": {
     "@types/cors": "^2.8.6",
     "@ucdavis/frcs": "^1.1.1",
-    "@ucdavis/lca": "^1.0.4",
+    "@ucdavis/lca": "^1.1.0",
     "@ucdavis/tea": "^1.2.0",
     "body-parser": "^1.19.0",
     "connect-timeout": "^1.9.0",

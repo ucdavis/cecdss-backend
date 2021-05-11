@@ -1,3 +1,4 @@
+import { runLCA } from '@ucdavis/lca/out/index';
 import { RunParams } from '@ucdavis/lca/out/lca.model';
 import { transmission } from '@ucdavis/tea';
 import { InputModTransimission } from '@ucdavis/tea/out/models/input.model';
@@ -12,6 +13,7 @@ import OSRM from 'osrm';
 import { performance } from 'perf_hooks';
 import pg from 'pg';
 import { getFrcsInputsTest } from './frcsInputCalculations';
+import { LCAresults } from './models/lcaModels';
 import { TreatedCluster } from './models/treatedcluster';
 import {
   AllYearsResults,
@@ -19,7 +21,7 @@ import {
   RequestParamsAllYears,
   RequestParamsTest
 } from './models/types';
-import { getTeaOutputs, processClustersForYear, runLca } from './processYear';
+import { getTeaOutputs, processClustersForYear } from './processYear';
 import { testRunFrcsOnCluster } from './runFrcs';
 import { getTransportationCost, KM_TO_MILES } from './transportation';
 
@@ -153,7 +155,8 @@ app.post('/initialProcessing', async (req, res) => {
 
 app.post('/runLCA', async (req, res) => {
   const params: RunParams = req.body;
-  const lca = await runLca(params);
+  const lca: LCAresults = await runLCA(params);
+  lca.inputs = params;
   res.status(200).json(lca);
 });
 
