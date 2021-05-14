@@ -1,4 +1,3 @@
-import { runLCA } from '@ucdavis/lca/out/index';
 import { RunParams } from '@ucdavis/lca/out/lca.model';
 import { transmission } from '@ucdavis/tea';
 import { InputModTransimission } from '@ucdavis/tea/out/models/input.model';
@@ -21,7 +20,7 @@ import {
   RequestParamsAllYears,
   RequestParamsTest
 } from './models/types';
-import { getTeaOutputs, processClustersForYear } from './processYear';
+import { getTeaOutputs, processClustersForYear, runLca } from './processYear';
 import { testRunFrcsOnCluster } from './runFrcs';
 import { getTransportationCost, KM_TO_MILES } from './transportation';
 
@@ -155,8 +154,7 @@ app.post('/initialProcessing', async (req, res) => {
 
 app.post('/runLCA', async (req, res) => {
   const params: RunParams = req.body;
-  const lca: LCAresults = await runLCA(params);
-  lca.inputs = params;
+  const lca: LCAresults = await runLca(params);
   res.status(200).json(lca);
 });
 
