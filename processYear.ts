@@ -201,7 +201,7 @@ export const processClustersForYear = async (
       console.log(
         `annualGeneration: ${params.annualGeneration}, radius: ${results.radius}, # of clusters: ${results.numberOfClusters}`
       );
-      const lca = await runLCA(lcaInputs);
+      const lca = await runLca(lcaInputs);
       // console.log(lca);
       results.lcaResults = lca;
       // $ / wet metric ton
@@ -388,6 +388,12 @@ const selectClusters = async (
     }
     res();
   });
+};
+
+export const runLca = async (inputs: RunParams) => {
+  const results: LCAresults = await runLCA(inputs);
+  results.inputs = inputs;
+  return results;
 };
 
 const getRouteDistanceAndDuration = (osrm: OSRM, routeOptions: OSRM.RouteOptions) => {
