@@ -274,6 +274,7 @@ const getClusters = async (
     const clusters: TreatedCluster[] = await db
       .table('treatedclusters')
       .where({ treatmentid: params.treatmentid }) // , year: year })
+      .where({ land_use: 'private' })
       .whereNotIn('cluster_no', [...usedIds, ...errorIds])
       .whereBetween('center_lat', [bounds[0].latitude, bounds[1].latitude])
       .andWhereBetween('center_lng', [bounds[0].longitude, bounds[1].longitude]);
