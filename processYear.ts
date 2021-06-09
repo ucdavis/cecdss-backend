@@ -273,8 +273,9 @@ const getClusters = async (
     const bounds = getBoundsOfDistance({ latitude: params.lat, longitude: params.lng }, radius);
     const clusters: TreatedCluster[] = await db
       .table('treatedclusters')
-      .where({ treatmentid: params.treatmentid }) // , year: year })
-      .where({ land_use: 'private' })
+      .where({ treatmentid: params.treatmentid })
+      .where({ year: 2016 }) // TODO: filter by actual year if we get data for multiple years
+      .whereIn('land_use', ['private', 'USDA Forest Service'])
       .whereNotIn('cluster_no', [...usedIds, ...errorIds])
       .whereBetween('center_lat', [bounds[0].latitude, bounds[1].latitude])
       .andWhereBetween('center_lng', [bounds[0].longitude, bounds[1].longitude]);
