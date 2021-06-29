@@ -16,10 +16,12 @@ import { LCAresults } from './models/lcaModels';
 import { TreatedCluster } from './models/treatedcluster';
 import {
   AllYearsResults,
+  RequestByDistanceParams,
   RequestParams,
   RequestParamsAllYears,
-  RequestParamsTest
+  RequestParamsTest,
 } from './models/types';
+import { processClustersByDistance } from './processDistance';
 import { getTeaOutputs, processClustersForYear, runLca } from './processYear';
 import { testRunFrcsOnCluster } from './runFrcs';
 import { getTransportationCost, KM_TO_MILES } from './transportation';
@@ -44,8 +46,8 @@ const db = knex({
     user: process.env.DB_USER,
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
-    port: Number(process.env.DB_PORT)
-  }
+    port: Number(process.env.DB_PORT),
+  },
 });
 console.log('connected to db. connected to osrm...');
 
@@ -54,6 +56,20 @@ console.log('connected to osrm');
 
 // allow cors
 app.use(cors());
+
+// constants
+const systems = [
+  'Ground-Based Mech WT',
+  'Ground-Based Manual WT',
+  'Ground-Based Manual Log',
+  'Ground-Based CTL',
+  'Cable Manual WT/Log',
+  'Cable Manual WT',
+  'Cable Manual Log',
+  'Cable CTL',
+  'Helicopter Manual Log',
+  'Helicopter CTL',
+];
 
 app.post('/initialProcessing', async (req, res) => {
   console.log('running initial processing...');
@@ -73,7 +89,7 @@ app.post('/initialProcessing', async (req, res) => {
     substations.length > 1
       ? findNearest(
           { latitude: params.facilityLat, longitude: params.facilityLng },
-          substations.map(substation => {
+          substations.map((substation) => {
             return { latitude: substation.latitude, longitude: substation.longitude };
           })
         )
@@ -100,7 +116,7 @@ app.post('/initialProcessing', async (req, res) => {
     Desert: distanceAveraged,
     Urban: distanceAveraged,
     Hills: distanceAveraged,
-    Mountain: distanceAveraged
+    Mountain: distanceAveraged,
   };
   console.log(
     `nearest substation: ${nearestSubstation.substation_name} is ${distanceToNearestSubstation} miles away`
@@ -139,7 +155,7 @@ app.post('/initialProcessing', async (req, res) => {
     teaInputs: teaInputs,
     annualGeneration: annualGeneration,
     nearestSubstation: nearestSubstation.substation_name,
-    distanceToNearestSubstation: distanceToNearestSubstationInM / 1000 // km
+    distanceToNearestSubstation: distanceToNearestSubstationInM / 1000, // km
   };
 
   res.status(200).json(results);
@@ -161,24 +177,13 @@ app.post('/runLCA', async (req, res) => {
 app.post('/process', async (req, res) => {
   const t0 = performance.now();
   const params: RequestParams = req.body;
-  const systems = [
-    'Ground-Based Mech WT',
-    'Ground-Based Manual WT',
-    'Ground-Based Manual Log',
-    'Ground-Based CTL',
-    'Cable Manual WT/Log',
-    'Cable Manual WT',
-    'Cable Manual Log',
-    'Cable CTL',
-    'Helicopter Manual Log',
-    'Helicopter CTL'
-  ];
-  if (!systems.some(x => x === params.system)) {
+
+  if (!systems.some((x) => x === params.system)) {
     res.status(400).send('System not recognized');
   }
 
   const teaModels = ['GPO', 'CHP', 'GP'];
-  if (!teaModels.some(x => x === params.teaModel)) {
+  if (!teaModels.some((x) => x === params.teaModel)) {
     res.status(400).send('TEA Model not recognized');
   }
 
@@ -200,6 +205,49 @@ app.post('/process', async (req, res) => {
   console.log(`Running took ${t1 - t0} milliseconds.`);
 
   res.status(200).json(yearResult);
+});
+
+app.post('/processDistance', async (req, res) => {
+  const t0 = performance.now();
+  const params: RequestByDistanceParams = req.body;
+
+  if (!systems.some((x) => x === params.system)) {
+    res.status(400).send('System not recognized');
+    return;
+  }
+
+  const teaModels = ['GPO', 'CHP', 'GP'];
+  if (!teaModels.some((x) => x === params.teaModel)) {
+    res.status(400).send('TEA Model not recognized');
+    return;
+  }
+
+  if (
+    params.minRadiusInMeters === undefined ||
+    params.maxRadiusInMeters === undefined ||
+    params.minRadiusInMeters > params.maxRadiusInMeters ||
+    params.maxRadiusInMeters <= 0
+  ) {
+    res.status(400).send('Radius details invalid');
+    return;
+  }
+
+  const distanceResult = await processClustersByDistance(
+    db,
+    osrm,
+    params.minRadiusInMeters,
+    params.maxRadiusInMeters,
+    params,
+    params.year
+  );
+  console.log(
+    `distance: ${params.minRadiusInMeters} -> ${params.maxRadiusInMeters}, # of clusters: ${distanceResult.clusterNumbers.length}`
+  );
+
+  const t1 = performance.now();
+  console.log(`Running took ${t1 - t0} milliseconds.`);
+
+  res.status(200).json(distanceResult);
 });
 
 // tslint:disable-next-line: max-file-line-count
@@ -239,7 +287,7 @@ app.post('/testCluster', async (req, res) => {
       residueFractionLLT,
       volumeLLT,
       removalsLLT,
-      frcsResult
+      frcsResult,
     } = await testRunFrcsOnCluster(
       cluster,
       params.system,
@@ -275,11 +323,11 @@ app.post('/testCluster', async (req, res) => {
         residueFractionLLT,
         volumeLLT,
         removalsLLT,
-        frcsInputs
+        frcsInputs,
       },
       frcsResult: frcsResult,
       lat: cluster.landing_lat,
-      lng: cluster.landing_lng
+      lng: cluster.landing_lng,
     };
   } catch (e) {
     const {
@@ -298,7 +346,7 @@ app.post('/testCluster', async (req, res) => {
       residueWeightLLT,
       residueFractionLLT,
       volumeLLT,
-      removalsLLT
+      removalsLLT,
     } = getFrcsInputsTest(
       cluster,
       params.system,
@@ -330,7 +378,7 @@ app.post('/testCluster', async (req, res) => {
       residueFractionLLT,
       volumeLLT,
       removalsLLT,
-      e: e
+      e: e,
     };
   } finally {
     res.status(200).json(clusterResults);
