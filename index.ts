@@ -7,6 +7,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
 import { findNearest, getBoundsOfDistance, getDistance } from 'geolib';
+import _fetch from 'isomorphic-fetch';
 import knex from 'knex';
 import OSRM from 'osrm';
 import { performance } from 'perf_hooks';
@@ -20,6 +21,7 @@ import {
   RequestParams,
   RequestParamsAllYears,
   RequestParamsTest,
+  YearlyResult,
 } from './models/types';
 import { processClustersByDistance } from './processDistance';
 import { getTeaOutputs, processClustersForYear, runLca } from './processYear';

@@ -15,20 +15,14 @@ import {
   OutputModGP,
   OutputModGPO,
 } from '@ucdavis/tea/out/models/output.model';
-import { getBoundsOfDistance, getDistance } from 'geolib';
-import fetch from 'isomorphic-fetch';
 import Knex from 'knex';
 import OSRM from 'osrm';
 import { performance } from 'perf_hooks';
 import { LCAresults } from './models/lcaModels';
 import { TreatedCluster } from './models/treatedcluster';
 import {
-  ClusterErrorResult,
-  ClusterResult,
   LCATotals,
   RequestByDistanceParams,
-  RequestParams,
-  TreatedClustersInfo,
   YearlyResult,
 } from './models/types';
 import { runFrcsOnCluster } from './runFrcs';
@@ -236,20 +230,6 @@ const getClusters = async (
   minRadiusInMeters: number,
   maxRadiusInMeters: number
 ): Promise<TreatedCluster[]> => {
-  const clusterssql = db
-    .table('treatedclusters')
-    .where({ treatmentid: params.treatmentid })
-    .where({ year: 2016 }) // TODO: filter by actual year if we get data for multiple years
-    .whereIn('land_use', ['private', 'USDA Forest Service'])
-    .andWhereRaw(
-      `ST_DistanceSphere(ST_MakePoint(${params.facilityLng},${params.facilityLat}), ST_MakePoint(center_lng,center_lat)) > ${minRadiusInMeters}`
-    )
-    .andWhereRaw(
-      `ST_DistanceSphere(ST_MakePoint(${params.facilityLng},${params.facilityLat}), ST_MakePoint(center_lng,center_lat)) <= ${maxRadiusInMeters}`
-    ).toSQL().toNative().sql;
-
-  console.log(clusterssql);
-
   return new Promise(async (res, rej) => {
     const clusters: TreatedCluster[] = await db
       .table('treatedclusters')
