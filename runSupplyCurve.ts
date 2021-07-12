@@ -25,18 +25,17 @@ const db = knex({
     port: Number(process.env.DB_PORT),
   },
 });
-console.log('connected to db. connected to osrm...');
+console.log('connected to db. connecting to osrm...');
 
-// const osrm = new OSRM('./data/california-latest.osrm');
 const osrm = new (OSRM as any)({
-    path: './data/california-latest.osrm',
+    path: process.env.OSRM || './data/california-latest.osrm',
     mmap_memory: false
 });
 
 console.log('connected to osrm');
 
 const run = async () => {
-  const bandsInMiles = [0, 10, 20, 30, 40, 50];
+  const bandsInMiles = [0, 10];
   // const bandsInMiles = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
   const allResults = [];
 
@@ -125,7 +124,7 @@ const run = async () => {
   }
 
   // write to csv file
-  const csv = fs.createWriteStream('./data/supplyCurve.csv');
+  const csv = fs.createWriteStream(process.env.CSV_OUT || './data/supplyCurve.csv');
   csv.write(
     'system,treatment,teaModel,band,totalDryFeedstock,totalCost,totalCostPerDryTon,runningTotalDryFeedstock,runningTotalCost\n'
   );
