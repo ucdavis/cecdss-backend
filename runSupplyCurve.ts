@@ -139,6 +139,7 @@ const run = async () => {
 run()
   .then(() => {
     console.log('done processing all bands');
+    process.exit();
   })
   .catch((err) => {
     console.log(err);
