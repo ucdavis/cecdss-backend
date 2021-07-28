@@ -15,16 +15,13 @@ import {
   OutputModGP,
   OutputModGPO,
 } from '@ucdavis/tea/out/models/output.model';
+import geocluster from 'geocluster';
 import Knex from 'knex';
 import OSRM from 'osrm';
 import { performance } from 'perf_hooks';
 import { LCAresults } from './models/lcaModels';
 import { TreatedCluster } from './models/treatedcluster';
-import {
-  LCATotals,
-  RequestByDistanceParams,
-  YearlyResult,
-} from './models/types';
+import { LCATotals, RequestByDistanceParams, YearlyResult } from './models/types';
 import { runFrcsOnCluster } from './runFrcs';
 import {
   getMoveInTrip,
@@ -99,20 +96,68 @@ export const processClustersByDistance = async (
       console.log(`year:${year} selecting clusters...`);
       await selectClusters(osrm, params, clusters, results, lcaTotals, [], []);
 
-      console.log(`calculating move in distance on ${results.clusters.length} clusters...`);
-      const t0 = performance.now();
-      const moveInTripResults = await getMoveInTrip(
-        osrm,
-        params.facilityLat,
-        params.facilityLng,
-        results.clusters
-      );
-      const t1 = performance.now();
-      console.log(
-        `Running took ${t1 - t0} milliseconds, move in distance: ${moveInTripResults.distance}.`
-      );
+      let totalMoveInDistance = 0;
 
-      results.tripGeometries = moveInTripResults.trips.map((t) => t.geometry);
+      if (results.clusters.length > 500) {
+        console.log('lots of clusters, breaking into chunks');
+
+        const clusterCoordinates = results.clusters.map((c) => [c.center_lng, c.center_lat]);
+
+        const bias = 1.5; // multiply stdev with this factor, the smaller the more clusters
+        const chunkedClusters = geocluster(clusterCoordinates, bias);
+
+        console.log('number of chunks:', chunkedClusters.length);
+        console.log('clusters in chunk1:' + chunkedClusters[0].elements.length);
+
+        for (let i = 0; i < chunkedClusters.length; i++) {
+          const chunk = chunkedClusters[i];
+
+          const clustersInChunk = chunk.elements.map(
+            (latlng: number[]) =>
+              ({
+                center_lng: latlng[0],
+                center_lat: latlng[1],
+              } as TreatedCluster)
+          );
+
+          console.log(
+            `calculating move in distance on ${clustersInChunk.length} clusters in chunk ${
+              i + 1
+            }...`
+          );
+          const t0_chunk = performance.now();
+          const chunkedMoveInTripResults = await getMoveInTrip(
+            osrm,
+            params.facilityLat,
+            params.facilityLng,
+            clustersInChunk
+          );
+          const t1_chunk = performance.now();
+          console.log(
+            `Running took ${t1_chunk - t0_chunk} milliseconds, move in distance: ${
+              chunkedMoveInTripResults.distance
+            }.`
+          );
+
+          totalMoveInDistance += chunkedMoveInTripResults.distance;
+        }
+      } else {
+        // not that many clusters, so don't bother chunking
+        console.log(`calculating move in distance on ${clusters.length} clusters...`);
+        const t0 = performance.now();
+        const moveInTripResults = await getMoveInTrip(
+          osrm,
+          params.facilityLat,
+          params.facilityLng,
+          results.clusters
+        );
+        const t1 = performance.now();
+        console.log(
+          `Running took ${t1 - t0} milliseconds, move in distance: ${moveInTripResults.distance}.`
+        );
+
+        totalMoveInDistance = moveInTripResults.distance;
+      }
 
       // we only update the move in distance if it is applicable for this type of treatment & system
       let moveInDistance = 0;
@@ -123,7 +168,7 @@ export const processClustersByDistance = async (
         params.system === 'Ground-Based CTL'
       ) {
         console.log('updating move in distance of');
-        moveInDistance = moveInTripResults.distance;
+        moveInDistance = totalMoveInDistance;
       } else {
         console.log(
           `skipping updating move in distance, totalBiomass: ${results.totalFeedstock}, # of clusters: ${results.clusters.length}`

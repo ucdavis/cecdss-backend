@@ -35,7 +35,7 @@ const osrm = new (OSRM as any)({
 console.log('connected to osrm');
 
 const run = async () => {
-  const bandsInMiles = [0, 10];
+  const bandsInMiles = [0, 10, 20, 30];
   // const bandsInMiles = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
   const allResults = [];
 
@@ -124,16 +124,12 @@ const run = async () => {
   }
 
   // write to csv file
-  const csv = fs.createWriteStream(process.env.CSV_OUT || './data/supplyCurve.csv');
-  csv.write(
-    'system,treatment,teaModel,band,totalDryFeedstock,totalCost,totalCostPerDryTon,runningTotalDryFeedstock,runningTotalCost\n'
-  );
+  let fileContents =
+    'system,treatment,teaModel,band,totalDryFeedstock,totalCost,totalCostPerDryTon,runningTotalDryFeedstock,runningTotalCost\n';
   allResults.forEach((result) => {
-    csv.write(
-      `${result.system},${result.treatment},${result.teaModel},${result.band},${result.totalDryFeedstock},${result.totalCost},${result.totalCostPerDryTon},${result.runningTotalDryFeedstock},${result.runningTotalCost}\n`
-    );
+    fileContents += `${result.system},${result.treatment},${result.teaModel},${result.band},${result.totalDryFeedstock},${result.totalCost},${result.totalCostPerDryTon},${result.runningTotalDryFeedstock},${result.runningTotalCost}\n`;
   });
-  csv.end();
+  fs.writeFileSync(process.env.CSV_OUT || './data/supplyCurve.csv', fileContents);
 };
 
 run()
