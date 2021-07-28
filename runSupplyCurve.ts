@@ -28,8 +28,8 @@ const db = knex({
 console.log('connected to db. connecting to osrm...');
 
 const osrm = new (OSRM as any)({
-    path: process.env.OSRM || './data/california-latest.osrm',
-    mmap_memory: false
+  path: process.env.OSRM || './data/california-latest.osrm',
+  mmap_memory: false,
 });
 
 console.log('connected to osrm');
