@@ -35,18 +35,24 @@ const osrm = new (OSRM as any)({
 console.log('connected to osrm');
 
 const run = async () => {
-  const bandsInMiles = [0, 10, 20, 30];
-  // const bandsInMiles = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+  // const bandsInMiles = [0, 10, 20, 30];
+  const bandsInMiles = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
   const allResults = [];
 
   // keep running totals across all bands
   let runningTotalDryFeedstock = 0;
   let runningTotalCost = 0;
 
+  const facilityLat = process.env.FACILITY_LAT ? parseFloat(process.env.FACILITY_LAT) : 39.710361488650186;
+  const facilityLng = process.env.FACILITY_LNG ? parseFloat(process.env.FACILITY_LNG) : -120.21618958848077;
+  const facilityName = process.env.FACILITY_NAME || 'DefaultFacility';
+
+  console.log(`running for facility ${facilityName} at (${facilityLat}, ${facilityLng})`);
+
   // TODO: get rid of cash flow stuff and any other stuff that we don't need
   const params: RequestByDistanceParams = {
-    facilityLat: 39.710361488650186,
-    facilityLng: -120.21618958848077,
+    facilityLat: facilityLat,
+    facilityLng: facilityLng,
     system: 'Ground-Based Mech WT',
     treatmentid: 1,
     dieselFuelPrice: 3.251,
