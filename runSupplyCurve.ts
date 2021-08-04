@@ -111,8 +111,8 @@ const run = async () => {
       `distance: ${runParams.minRadiusInMeters} -> ${runParams.maxRadiusInMeters}, # of clusters: ${distanceResult.clusterNumbers.length}`
     );
 
-    runningTotalCost += distanceResult.totalCostPerDryTon * distanceResult.totalDryFeedstock;
-    runningTotalDryFeedstock += distanceResult.totalDryFeedstock;
+    runningTotalCost += (distanceResult.totalCostPerDryTon * distanceResult.totalDryFeedstock) || 0;
+    runningTotalDryFeedstock += (distanceResult.totalDryFeedstock || 0);
 
     const importantData = {
       system: params.system,
@@ -122,8 +122,8 @@ const run = async () => {
       totalDryFeedstock: distanceResult.totalDryFeedstock || 0,
       totalCost: distanceResult.totalCostPerDryTon * distanceResult.totalDryFeedstock || 0,
       totalCostPerDryTon: distanceResult.totalCostPerDryTon || 0,
-      runningTotalDryFeedstock: runningTotalDryFeedstock || 0,
-      runningTotalCost: runningTotalCost || 0,
+      runningTotalDryFeedstock,
+      runningTotalCost,
     };
 
     allResults.push(importantData);
