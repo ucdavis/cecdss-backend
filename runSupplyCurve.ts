@@ -119,11 +119,11 @@ const run = async () => {
       treatment: params.treatmentid,
       teaModel: params.teaModel,
       band: bandsInMiles[i],
-      totalDryFeedstock: distanceResult.totalDryFeedstock,
-      totalCost: distanceResult.totalCostPerDryTon * distanceResult.totalDryFeedstock,
-      totalCostPerDryTon: distanceResult.totalCostPerDryTon,
-      runningTotalDryFeedstock,
-      runningTotalCost,
+      totalDryFeedstock: distanceResult.totalDryFeedstock || 0,
+      totalCost: distanceResult.totalCostPerDryTon * distanceResult.totalDryFeedstock || 0,
+      totalCostPerDryTon: distanceResult.totalCostPerDryTon || 0,
+      runningTotalDryFeedstock: runningTotalDryFeedstock || 0,
+      runningTotalCost: runningTotalCost || 0,
     };
 
     allResults.push(importantData);
