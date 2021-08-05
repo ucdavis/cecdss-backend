@@ -43,8 +43,12 @@ const run = async () => {
   let runningTotalDryFeedstock = 0;
   let runningTotalCost = 0;
 
-  const facilityLat = process.env.FACILITY_LAT ? parseFloat(process.env.FACILITY_LAT) : 39.710361488650186;
-  const facilityLng = process.env.FACILITY_LNG ? parseFloat(process.env.FACILITY_LNG) : -120.21618958848077;
+  const facilityLat = process.env.FACILITY_LAT
+    ? parseFloat(process.env.FACILITY_LAT)
+    : 39.710361488650186;
+  const facilityLng = process.env.FACILITY_LNG
+    ? parseFloat(process.env.FACILITY_LNG)
+    : -120.21618958848077;
   const facilityName = process.env.FACILITY_NAME || 'DefaultFacility';
 
   console.log(`running for facility ${facilityName} at (${facilityLat}, ${facilityLng})`);
@@ -111,8 +115,16 @@ const run = async () => {
       `distance: ${runParams.minRadiusInMeters} -> ${runParams.maxRadiusInMeters}, # of clusters: ${distanceResult.clusterNumbers.length}`
     );
 
-    runningTotalCost += (distanceResult.totalCostPerDryTon * distanceResult.totalDryFeedstock) || 0;
-    runningTotalDryFeedstock += (distanceResult.totalDryFeedstock || 0);
+    var totalCostPerDryTon =
+      (distanceResult.totalFeedstockCost +
+        distanceResult.totalTransportationCost +
+        distanceResult.totalMoveInCost) /
+      distanceResult.totalDryFeedstock;
+
+    var totalCost = totalCostPerDryTon * distanceResult.totalDryFeedstock;
+
+    runningTotalCost += totalCost || 0;
+    runningTotalDryFeedstock += distanceResult.totalDryFeedstock || 0;
 
     const importantData = {
       system: params.system,
@@ -120,8 +132,8 @@ const run = async () => {
       teaModel: params.teaModel,
       band: bandsInMiles[i],
       totalDryFeedstock: distanceResult.totalDryFeedstock || 0,
-      totalCost: distanceResult.totalCostPerDryTon * distanceResult.totalDryFeedstock || 0,
-      totalCostPerDryTon: distanceResult.totalCostPerDryTon || 0,
+      totalCost: totalCost || 0,
+      totalCostPerDryTon: totalCostPerDryTon || 0,
       runningTotalDryFeedstock,
       runningTotalCost,
     };
