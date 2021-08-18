@@ -5,7 +5,7 @@ import knex from 'knex';
 import OSRM from 'osrm';
 import pg from 'pg';
 
-import { RequestByDistanceParams, YearlyResult } from 'models/types';
+import { RequestByDistanceParams } from 'models/types';
 import { processClustersByDistance } from './processDistance';
 
 const PG_DECIMAL_OID = 1700;
@@ -51,6 +51,8 @@ const run = async () => {
     : -120.21618958848077;
   const facilityName = process.env.FACILITY_NAME || 'DefaultFacility';
 
+  const treatmentId = process.env.TREATMENT_ID ? parseInt(process.env.TREATMENT_ID) : 1;
+
   console.log(`running for facility ${facilityName} at (${facilityLat}, ${facilityLng})`);
 
   // TODO: get rid of cash flow stuff and any other stuff that we don't need
@@ -58,7 +60,7 @@ const run = async () => {
     facilityLat: facilityLat,
     facilityLng: facilityLng,
     system: 'Ground-Based Mech WT',
-    treatmentid: 1,
+    treatmentid: treatmentId,
     dieselFuelPrice: 3.251,
     year: 2016,
     minRadiusInMeters: 0,
