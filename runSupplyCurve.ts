@@ -51,7 +51,7 @@ const run = async () => {
     : -120.21618958848077;
   const facilityName = process.env.FACILITY_NAME || 'DefaultFacility';
 
-  const treatmentId = process.env.TREATMENT_ID ? parseInt(process.env.TREATMENT_ID) : 1;
+  const treatmentId = process.env.TREATMENT_ID ? parseInt(process.env.TREATMENT_ID, 10) : 1;
 
   console.log(`running for facility ${facilityName} at (${facilityLat}, ${facilityLng})`);
 
@@ -117,13 +117,13 @@ const run = async () => {
       `distance: ${runParams.minRadiusInMeters} -> ${runParams.maxRadiusInMeters}, # of clusters: ${distanceResult.clusterNumbers.length}`
     );
 
-    var totalCostPerDryTon =
+    const totalCostPerDryTon =
       (distanceResult.totalFeedstockCost +
         distanceResult.totalTransportationCost +
         distanceResult.totalMoveInCost) /
       distanceResult.totalDryFeedstock;
 
-    var totalCost = totalCostPerDryTon * distanceResult.totalDryFeedstock;
+    const totalCost = totalCostPerDryTon * distanceResult.totalDryFeedstock;
 
     runningTotalCost += totalCost || 0;
     runningTotalDryFeedstock += distanceResult.totalDryFeedstock || 0;
