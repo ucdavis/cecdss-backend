@@ -147,7 +147,12 @@ export const processClustersForYear = async (
 
       console.log(`calculating move in distance on ${results.clusters.length} clusters...`);
       const t0 = performance.now();
-      const moveInTripResults = await getMoveInTrip(osrm, params.facilityLat, params.facilityLng, results.clusters);
+      const moveInTripResults = await getMoveInTrip(
+        osrm,
+        params.facilityLat,
+        params.facilityLng,
+        results.clusters
+      );
       const t1 = performance.now();
       console.log(
         `Running took ${t1 - t0} milliseconds, move in distance: ${moveInTripResults.distance}.`
@@ -279,6 +284,7 @@ const getClusters = async (
       .whereNotIn('cluster_no', [...usedIds, ...errorIds])
       .whereBetween('center_lat', [bounds[0].latitude, bounds[1].latitude])
       .andWhereBetween('center_lng', [bounds[0].longitude, bounds[1].longitude]);
+
     res(clusters);
   });
 };

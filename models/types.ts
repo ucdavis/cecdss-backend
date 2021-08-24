@@ -36,6 +36,22 @@ export interface RequestParams {
   costOfEquity: number;
 }
 
+export interface RequestByDistanceParams {
+  facilityLat: number;
+  facilityLng: number;
+  system: string;
+  treatmentid: number;
+  dieselFuelPrice: number; // $/gal
+  year: number;
+  minRadiusInMeters: number;
+  maxRadiusInMeters: number;
+  teaModel: string;
+  annualGeneration: number; // used for LCA, kWh
+  moistureContent: number; // for frcs
+  cashFlow: CashFlow | CashFlowCHP | CashFlowGP;
+  costOfEquity: number;
+}
+
 export interface RequestParamsTest extends RequestParams {
   year: number;
   cluster_no: number;
