@@ -52,6 +52,12 @@ export interface RequestByDistanceParams {
   costOfEquity: number;
 }
 
+export interface RequestByRoutesParams {
+  facilityLat: number;
+  facilityLng: number;
+  clusters: ClusterResult[];
+}
+
 export interface RequestParamsTest extends RequestParams {
   year: number;
   cluster_no: number;

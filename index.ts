@@ -17,7 +17,9 @@ import { LCAresults } from './models/lcaModels';
 import { TreatedCluster } from './models/treatedcluster';
 import {
   AllYearsResults,
+  Geometry,
   RequestByDistanceParams,
+  RequestByRoutesParams,
   RequestParams,
   RequestParamsAllYears,
   RequestParamsTest,
@@ -250,6 +252,46 @@ app.post('/processDistance', async (req, res) => {
   console.log(`Running took ${t1 - t0} milliseconds.`);
 
   res.status(200).json(distanceResult);
+});
+
+app.post('/processRoutes', async (req, res) => {
+  const t0 = performance.now();
+  const params: RequestByRoutesParams = req.body;
+
+  // loop through each cluster and get trip geometry
+  const clusterRouteResults: Promise<Geometry[]>[] = [];
+
+  for (let i = 0; i < params.clusters.length; i++) {
+    const cluster = params.clusters[i];
+    const routeOptions: OSRM.RouteOptions = {
+      geometries: 'geojson',
+      coordinates: [
+        [params.facilityLng, params.facilityLat],
+        [cluster.landing_lng, cluster.landing_lat],
+      ],
+    };
+
+    const promise = new Promise<Geometry[]>((resolve, reject) => {
+      osrm.route(routeOptions, async (err, result) => {
+        if (err) {
+          reject(err);
+        }
+        // Assume we only have one route
+        if (result.routes.length > 0) {
+          resolve(result.routes[0].geometry as Geometry[]);
+        }
+      });
+    });
+
+    clusterRouteResults.push(promise);
+  }
+
+  const routeResults = await Promise.all(clusterRouteResults);
+
+  const t1 = performance.now();
+  console.log(`Running took ${t1 - t0} milliseconds.`);
+
+  res.status(200).json(routeResults);
 });
 
 // tslint:disable-next-line: max-file-line-count
