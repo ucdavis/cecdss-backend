@@ -94,6 +94,8 @@ export const processClustersForYear = async (
         totalTransportationDistance: 0,
       };
 
+      const TONNE_TO_TON = 1.10231; // 1 metric ton = 1.10231 short tons
+      biomassTarget = biomassTarget * TONNE_TO_TON;
       while (results.totalFeedstock < biomassTarget) {
         if (
           results.radius > 40000 &&
@@ -209,7 +211,7 @@ export const processClustersForYear = async (
       const lca = await runLca(lcaInputs);
       // console.log(lca);
       results.lcaResults = lca;
-      // $ / wet metric ton
+      // $ / wet short ton
       const fuelCost =
         (results.totalFeedstockCost + results.totalTransportationCost + results.totalMoveInCost) /
         results.totalFeedstock;
@@ -218,7 +220,7 @@ export const processClustersForYear = async (
 
       const moistureContentPercentage = params.moistureContent / 100.0;
 
-      // calculate dry values ($ / dry metric ton)
+      // calculate dry values ($ / dry short ton)
       results.totalDryFeedstock = results.totalFeedstock * (1 - moistureContentPercentage);
       results.totalDryCoproduct = results.totalCoproduct * (1 - moistureContentPercentage);
 
