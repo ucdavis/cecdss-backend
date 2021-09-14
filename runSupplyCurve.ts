@@ -50,6 +50,7 @@ const run = async () => {
     ? parseFloat(process.env.FACILITY_LNG)
     : -120.21618958848077;
   const facilityName = process.env.FACILITY_NAME || 'DefaultFacility';
+  const harvestSystem = process.env.HARVEST_SYSTEM || 'Ground-Based Mech WT';
 
   const treatmentId = process.env.TREATMENT_ID ? parseInt(process.env.TREATMENT_ID, 10) : 1;
 
@@ -59,7 +60,7 @@ const run = async () => {
   const params: RequestByDistanceParams = {
     facilityLat: facilityLat,
     facilityLng: facilityLng,
-    system: 'Ground-Based Mech WT',
+    system: harvestSystem,
     treatmentid: treatmentId,
     dieselFuelPrice: 3.251,
     year: 2016,
