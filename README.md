@@ -1,6 +1,8 @@
 # CEC Dataprep
 
-Program to integrate processed F3 data with FRCS, TEA
+This program is the backend API that integrates all of the data processed in [CEC-DATAPREP](https://github.com/ucdavis/cec-dataprep/) with [FRCS](https://github.com/ucdavis/fuel-reduction-cost-simulator), [TEA](https://github.com/ucdavis/technoeconomic-assessment/) and [LCA](https://github.com/ucdavis/lca) models.
+
+The API can be called directly, but more commonly is used for the backend to the [CECDSS Web Application](https://github.com/ucdavis/cecdss).
 
 # Running locally
 
@@ -38,3 +40,5 @@ At this point you are ready to run the cecdss-backend
 Type `npm run dev` to launch the app at https://localhost:3000.
 
 The front-end companion application at https://github.com/ucdavis/cecdss will now be able to connect to the backend and you are ready to start making requests.
+
+*TODO* API Documentation
