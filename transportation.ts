@@ -1,15 +1,15 @@
 import { ClusterResult, YearlyTripResults } from 'models/types';
 import OSRM from 'osrm';
 
-const TRUCK_LABOR = 23.29; // changed from 22.74 according to BLS 2019
+// 2020 Median Pay for Heavy and Tractor-trailer Truck Drivers according to BLS
+// https://www.bls.gov/ooh/transportation-and-material-moving/heavy-and-tractor-trailer-truck-drivers.htm
+const TRUCK_LABOR = 22.66;
 const DRIVERS_PER_TRUCK = 1.67;
 const MILES_PER_GALLON = 6;
 const OIL_ETC_COST = 0.35; // $/mile
-export const KM_TO_MILES = 0.621371;
-export const TONS_PER_TRUCK = 25; // frcs assumption
-// 17.33 in metric tons, multiply by constant to get into short tons
+const KM_TO_MILES = 0.621371;
 
-export const getTransportationCost = (distance: number, duration: number, fuelCost: number) => {
+export const getTransportationCost = (distance: number, duration: number, fuelCost: number, payload: number) => {
   /*
 
     2* cause you have to drive back
@@ -32,7 +32,7 @@ export const getTransportationCost = (distance: number, duration: number, fuelCo
 
   let cost = OIL_ETC_COST * miles + fuel + labor;
 
-  cost = cost / TONS_PER_TRUCK + 1.11; // add $1.11 fixed cost to avoid unrealistic cost when distance is small
+  cost = cost / payload + 1.11; // add $1.11 fixed cost to avoid unrealistic cost when distance is small
 
   return cost;
 };
