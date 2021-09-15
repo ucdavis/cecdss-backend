@@ -30,7 +30,12 @@ import {
   YearlyResult,
 } from './models/types';
 import { runFrcsOnCluster } from './runFrcs';
-import { getMoveInTrip, getTransportationCost } from './transportation';
+import {
+  FULL_TRUCK_PAYLOAD,
+  getMoveInTrip,
+  getTransportationCostTotal,
+  KM_TO_MILES,
+} from './transportation';
 
 export const processClustersForYear = async (
   db: Knex,
@@ -187,7 +192,6 @@ export const processClustersForYear = async (
       results.numberOfClusters = results.clusterNumbers.length;
       console.log(lcaTotals);
 
-      const KM_TO_MILES = 0.621371;
       const lcaInputs: RunParams = {
         technology: params.teaModel,
         diesel: lcaTotals.totalDiesel / params.annualGeneration, // MWh
@@ -326,33 +330,16 @@ const selectClusters = async (
           // currently distance is the osrm generated distance between each landing site and the facility location
           const route: any = await getRouteDistanceAndDuration(osrm, routeOptions);
           // number of trips is how many truckloads it takes to transport biomass
-          const FULL_TRUCK_PAYLOAD = 25; // FRCS assumption (in green tons)
           const numberOfTripsForTransportation = Math.ceil(clusterFeedstock / FULL_TRUCK_PAYLOAD);
           // multiply the osrm road distance by number of trips, transportation eq doubles it for round trip
           const distance = route.distance / 1000; // m to km
           const duration = route.duration / 3600; // seconds to hours
-          let transportationCostFullPayloadPerGT = 0;
-          if (clusterFeedstock >= FULL_TRUCK_PAYLOAD) {
-            transportationCostFullPayloadPerGT = getTransportationCost(
-              distance,
-              duration,
-              params.dieselFuelPrice,
-              FULL_TRUCK_PAYLOAD
-            );
-          }
-          let transportationCostPartialPayloadPerGT = 0;
-          const partialPayload = clusterFeedstock % FULL_TRUCK_PAYLOAD;
-          if (partialPayload > 0) {
-            transportationCostPartialPayloadPerGT = getTransportationCost(
-              distance,
-              duration,
-              params.dieselFuelPrice,
-              partialPayload
-            );
-          }
-          const transportationCostTotal =
-            (clusterFeedstock - partialPayload) * transportationCostFullPayloadPerGT +
-            partialPayload * transportationCostPartialPayloadPerGT;
+          const transportationCostTotal = getTransportationCostTotal(
+            clusterFeedstock,
+            distance,
+            duration,
+            params.dieselFuelPrice
+          );
 
           results.totalFeedstock += clusterFeedstock;
           results.totalFeedstockCost += frcsResult.Residue.CostPerAcre * cluster.area;
