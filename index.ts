@@ -28,7 +28,7 @@ import {
 import { processClustersByDistance } from './processDistance';
 import { getTeaOutputs, processClustersForYear, runLca } from './processYear';
 import { testRunFrcsOnCluster } from './runFrcs';
-import { getTransportationCost, KM_TO_MILES } from './transportation';
+import { FULL_TRUCK_PAYLOAD, getTransportationCostTotal, KM_TO_MILES } from './transportation';
 
 const PG_DECIMAL_OID = 1700;
 pg.types.setTypeParser(PG_DECIMAL_OID, parseFloat);
@@ -304,12 +304,8 @@ app.post('/testCluster', async (req, res) => {
     .table('treatedclusters')
     .where({ treatmentid: params.treatmentid, year: params.year, cluster_no: params.cluster_no });
   const cluster = clusters[0];
-
   const distance = 0.5; // km
   const duration = 0.5; // route.duration / 3600; // seconds to hours
-  // TODO: update how we are calculating transportation cost, in reality a truck is not taking 1 trip per cluster
-  // could be multiple trips, depending on load
-  const transportationCostPerGT = getTransportationCost(distance, duration, params.dieselFuelPrice);
 
   console.log('running frcs...');
   let clusterResults = {};
@@ -340,7 +336,12 @@ app.post('/testCluster', async (req, res) => {
       params.moistureContent
     );
     const residueBiomass = frcsResult.Residue.WeightPerAcre * cluster.area;
-    const transportationCostTotal = transportationCostPerGT * residueBiomass;
+    const transportationCostTotal = getTransportationCostTotal(
+      residueBiomass,
+      distance,
+      duration,
+      params.dieselFuelPrice
+    );
 
     clusterResults = {
       cluster_no: cluster.cluster_no,

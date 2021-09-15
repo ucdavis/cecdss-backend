@@ -24,10 +24,10 @@ import { TreatedCluster } from './models/treatedcluster';
 import { LCATotals, RequestByDistanceParams, YearlyResult } from './models/types';
 import { runFrcsOnCluster } from './runFrcs';
 import {
+  FULL_TRUCK_PAYLOAD,
   getMoveInTrip,
-  getTransportationCost,
+  getTransportationCostTotal,
   KM_TO_MILES,
-  TONS_PER_TRUCK,
 } from './transportation';
 
 export const processClustersByDistance = async (
@@ -329,18 +329,16 @@ const selectClusters = async (
         // currently distance is the osrm generated distance between each landing site and the facility location
         const route: any = await getRouteDistanceAndDuration(osrm, routeOptions);
         // number of trips is how many truckloads it takes to transport biomass
-        const numberOfTripsForTransportation = clusterFeedstock / TONS_PER_TRUCK;
+        const numberOfTripsForTransportation = Math.ceil(clusterFeedstock / FULL_TRUCK_PAYLOAD);
         // multiply the osrm road distance by number of trips, transportation eq doubles it for round trip
-        let distance = route.distance;
-        distance = distance / 1000; // m to km
+        const distance = route.distance / 1000; // m to km
         const duration = route.duration / 3600; // seconds to hours
-        const transportationCostPerGT = getTransportationCost(
+        const transportationCostTotal = getTransportationCostTotal(
+          clusterFeedstock,
           distance,
           duration,
           params.dieselFuelPrice
         );
-        const transportationCostTotal = transportationCostPerGT * clusterFeedstock;
-        const costPerKM = transportationCostTotal / (distance * 2 * numberOfTripsForTransportation);
 
         results.totalFeedstock += clusterFeedstock;
         results.totalFeedstockCost += frcsResult.Residue.CostPerAcre * cluster.area;

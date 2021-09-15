@@ -16,7 +16,6 @@ import {
   OutputModGPO,
 } from '@ucdavis/tea/out/models/output.model';
 import { getBoundsOfDistance, getDistance } from 'geolib';
-import fetch from 'isomorphic-fetch';
 import Knex from 'knex';
 import OSRM from 'osrm';
 import { performance } from 'perf_hooks';
@@ -32,10 +31,10 @@ import {
 } from './models/types';
 import { runFrcsOnCluster } from './runFrcs';
 import {
+  FULL_TRUCK_PAYLOAD,
   getMoveInTrip,
-  getTransportationCost,
+  getTransportationCostTotal,
   KM_TO_MILES,
-  TONS_PER_TRUCK,
 } from './transportation';
 
 export const processClustersForYear = async (
@@ -209,17 +208,14 @@ export const processClustersForYear = async (
         `annualGeneration: ${params.annualGeneration}, radius: ${results.radius}, # of clusters: ${results.numberOfClusters}`
       );
       const lca = await runLca(lcaInputs);
-      // console.log(lca);
       results.lcaResults = lca;
-      // $ / wet short ton
       const fuelCost =
         (results.totalFeedstockCost + results.totalTransportationCost + results.totalMoveInCost) /
-        results.totalFeedstock;
+        results.totalFeedstock; // $ / wet short ton
       // return updated fuel cost so that tea results can be updated later
       results.fuelCost = fuelCost;
 
       const moistureContentPercentage = params.moistureContent / 100.0;
-
       // calculate dry values ($ / dry short ton)
       results.totalDryFeedstock = results.totalFeedstock * (1 - moistureContentPercentage);
       results.totalDryCoproduct = results.totalCoproduct * (1 - moistureContentPercentage);
@@ -334,19 +330,16 @@ const selectClusters = async (
           // currently distance is the osrm generated distance between each landing site and the facility location
           const route: any = await getRouteDistanceAndDuration(osrm, routeOptions);
           // number of trips is how many truckloads it takes to transport biomass
-          const numberOfTripsForTransportation = clusterFeedstock / TONS_PER_TRUCK;
+          const numberOfTripsForTransportation = Math.ceil(clusterFeedstock / FULL_TRUCK_PAYLOAD);
           // multiply the osrm road distance by number of trips, transportation eq doubles it for round trip
-          let distance = route.distance;
-          distance = distance / 1000; // m to km
+          const distance = route.distance / 1000; // m to km
           const duration = route.duration / 3600; // seconds to hours
-          const transportationCostPerGT = getTransportationCost(
+          const transportationCostTotal = getTransportationCostTotal(
+            clusterFeedstock,
             distance,
             duration,
             params.dieselFuelPrice
           );
-          const transportationCostTotal = transportationCostPerGT * clusterFeedstock;
-          const costPerKM =
-            transportationCostTotal / (distance * 2 * numberOfTripsForTransportation);
 
           results.totalFeedstock += clusterFeedstock;
           results.totalFeedstockCost += frcsResult.Residue.CostPerAcre * cluster.area;
