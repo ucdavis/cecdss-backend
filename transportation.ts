@@ -7,9 +7,47 @@ const TRUCK_LABOR = 22.66;
 const DRIVERS_PER_TRUCK = 1.67;
 const MILES_PER_GALLON = 6;
 const OIL_ETC_COST = 0.35; // $/mile
-const KM_TO_MILES = 0.621371;
+export const KM_TO_MILES = 0.621371;
+export const FULL_TRUCK_PAYLOAD = 25; // FRCS assumption (in green tons)
 
-export const getTransportationCost = (distance: number, duration: number, fuelCost: number, payload: number) => {
+export const getTransportationCostTotal = (
+  feedstockAmount: number,
+  distance: number,
+  duration: number,
+  dieselFuelPrice: number,
+) => {
+  let transportationCostFullPayloadPerGT = 0;
+  if (feedstockAmount >= FULL_TRUCK_PAYLOAD) {
+    transportationCostFullPayloadPerGT = getTransportationCostPerGT(
+      distance,
+      duration,
+      dieselFuelPrice,
+      FULL_TRUCK_PAYLOAD
+    );
+  }
+  let transportationCostPartialPayloadPerGT = 0;
+  const partialPayload = feedstockAmount % FULL_TRUCK_PAYLOAD;
+  if (partialPayload > 0) {
+    transportationCostPartialPayloadPerGT = getTransportationCostPerGT(
+      distance,
+      duration,
+      dieselFuelPrice,
+      partialPayload
+    );
+  }
+  const transportationCostTotal =
+    (feedstockAmount - partialPayload) * transportationCostFullPayloadPerGT +
+    partialPayload * transportationCostPartialPayloadPerGT;
+
+  return transportationCostTotal;
+};
+
+export const getTransportationCostPerGT = (
+  distance: number,
+  duration: number,
+  dieselFuelPrice: number,
+  payload: number
+) => {
   /*
 
     2* cause you have to drive back
@@ -28,7 +66,7 @@ export const getTransportationCost = (distance: number, duration: number, fuelCo
 
   const labor = DRIVERS_PER_TRUCK * TRUCK_LABOR * hours;
 
-  const fuel = (1 / MILES_PER_GALLON) * fuelCost * miles;
+  const fuel = (1 / MILES_PER_GALLON) * dieselFuelPrice * miles;
 
   let cost = OIL_ETC_COST * miles + fuel + labor;
 
