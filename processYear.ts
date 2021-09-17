@@ -187,7 +187,7 @@ export const processClustersForYear = async (
         System: params.system,
         MoveInDist: moveInDistance,
         DieselFuelPrice: params.dieselFuelPrice,
-        ChipAll: params.treatmentid === 4 ? true : false, // true if treatment is timberSalvage
+        ChipAll: params.treatmentid === 10 ? true : false, // true if treatment is biomass salvage
       });
 
       console.log(`move in cost: ${moveInCosts.Residue}`);
