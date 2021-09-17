@@ -237,7 +237,7 @@ export const processClustersForYear = async (
 
       /*** run TEA funtions ***/
       const cashFlow: CashFlow = params.cashFlow;
-      cashFlow.BiomassFuelCost = fuelCost * params.biomassTarget;
+      cashFlow.BiomassFuelCost = results.totalCostPerDryTon * biomassTarget;
       const energyRevenueRequired = calculateEnergyRevenueRequired(
         params.teaModel,
         params.cashFlow
