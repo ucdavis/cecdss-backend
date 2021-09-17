@@ -102,7 +102,8 @@ export const processClustersForYear = async (
       // get the clusters whose total feedstock amount is just greater than biomassTarget
       // for each cluster, run frcs and transportation model
       while (results.totalFeedstock < biomassTarget) {
-        if ( // TODO: might need a better terminating condition
+        if (
+          // TODO: might need a better terminating condition
           results.radius > 40000 &&
           results.clusters.length > 3800 &&
           results.totalFeedstock / biomassTarget < 0.1
@@ -237,7 +238,7 @@ export const processClustersForYear = async (
 
       /*** run TEA funtions ***/
       const cashFlow: CashFlow = params.cashFlow;
-      cashFlow.BiomassFuelCost = results.totalCostPerDryTon * biomassTarget;
+      cashFlow.BiomassFuelCost = results.totalFeedstockCost + results.totalTransportationCost + results.totalMoveInCost;
       const energyRevenueRequired = calculateEnergyRevenueRequired(
         params.teaModel,
         params.cashFlow
@@ -245,7 +246,8 @@ export const processClustersForYear = async (
       results.energyRevenueRequired = energyRevenueRequired;
       cashFlow.EnergyRevenueRequired = energyRevenueRequired;
       const energyRevenueRequiredPresent = calculateEnergyRevenueRequiredPW(
-        params.year - 2020 + 1,
+        // in the future, if users can choose which year to start, then 2016 should be replaced by the users choice
+        params.year - 2016 + 1, // currently, the first year is 2016
         params.costOfEquity,
         energyRevenueRequired
       );
