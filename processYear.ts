@@ -151,6 +151,10 @@ export const processClustersForYear = async (
           errorIds
         );
       }
+      results.numberOfClusters = results.clusterNumbers.length;
+      console.log(
+        `annualGeneration: ${params.annualGeneration}, radius: ${results.radius}, # of clusters: ${results.numberOfClusters}`
+      );
 
       console.log(`calculating move in distance on ${results.clusters.length} clusters...`);
       const t0 = performance.now();
@@ -195,8 +199,6 @@ export const processClustersForYear = async (
       results.totalMoveInDistance = moveInDistance;
       results.totalMoveInCost = moveInCosts.Residue;
 
-      results.numberOfClusters = results.clusterNumbers.length;
-
       /*** run LCA ***/
       console.log(lcaTotals);
       const lcaInputs: RunParams = {
@@ -211,9 +213,6 @@ export const processClustersForYear = async (
       console.log(lcaInputs);
       console.log('lcaTotals:');
       console.log(lcaTotals);
-      console.log(
-        `annualGeneration: ${params.annualGeneration}, radius: ${results.radius}, # of clusters: ${results.numberOfClusters}`
-      );
       const lca = await runLca(lcaInputs);
       results.lcaResults = lca;
       const fuelCost =
