@@ -93,10 +93,16 @@ export const processClustersForYear = async (
         totalTransportationDistance: 0,
       };
 
+      // biomassTarget in metric tons comes from TEA whereas FRCS returns weight in short tons.
+      // we want the units to be consistent in order to compare them later so convert biomassTarget to short tons
       const TONNE_TO_TON = 1.10231; // 1 metric ton = 1.10231 short tons
       biomassTarget = biomassTarget * TONNE_TO_TON;
+
+      /*** feedstock searching algorithm ***/
+      // get the clusters whose total feedstock amount is just greater than biomassTarget
+      // for each cluster, run frcs and transportation model
       while (results.totalFeedstock < biomassTarget) {
-        if (
+        if ( // TODO: might need a better terminating condition
           results.radius > 40000 &&
           results.clusters.length > 3800 &&
           results.totalFeedstock / biomassTarget < 0.1
@@ -161,6 +167,7 @@ export const processClustersForYear = async (
 
       results.tripGeometries = moveInTripResults.trips.map((t) => t.geometry);
 
+      /*** move-in cost calculation ***/
       // we only update the move in distance if it is applicable for this type of treatment & system
       let moveInDistance = 0;
       if (
@@ -190,14 +197,15 @@ export const processClustersForYear = async (
       results.totalMoveInCost = moveInCosts.Residue;
 
       results.numberOfClusters = results.clusterNumbers.length;
-      console.log(lcaTotals);
 
+      /*** run LCA ***/
+      console.log(lcaTotals);
       const lcaInputs: RunParams = {
         technology: params.teaModel,
-        diesel: lcaTotals.totalDiesel / params.annualGeneration, // MWh
-        gasoline: lcaTotals.totalGasoline / params.annualGeneration, // MWh
-        jetfuel: lcaTotals.totalJetFuel / params.annualGeneration, // MWh
-        distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration, // MWh
+        diesel: lcaTotals.totalDiesel / params.annualGeneration, // gal/kWh
+        gasoline: lcaTotals.totalGasoline / params.annualGeneration, // gal/MWh
+        jetfuel: lcaTotals.totalJetFuel / params.annualGeneration, // gal/MWh
+        distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration, // km/MWh
       };
       console.log('running LCA...');
       console.log('lcaInputs:');
@@ -228,6 +236,7 @@ export const processClustersForYear = async (
         (results.totalFeedstockCost + results.totalTransportationCost + results.totalMoveInCost) /
         results.totalDryFeedstock;
 
+      /*** run TEA funtions ***/
       const cashFlow: CashFlow = params.cashFlow;
       cashFlow.BiomassFuelCost = fuelCost * params.biomassTarget;
       const energyRevenueRequired = calculateEnergyRevenueRequired(
