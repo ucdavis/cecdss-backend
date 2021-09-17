@@ -231,8 +231,9 @@ export const processClustersForYear = async (
         results.totalTransportationCost / results.totalDryFeedstock;
       results.moveInCostPerDryTon = results.totalMoveInCost / results.totalDryFeedstock;
       results.totalCostPerDryTon =
-        (results.totalFeedstockCost + results.totalTransportationCost + results.totalMoveInCost) /
-        results.totalDryFeedstock;
+        results.harvestCostPerDryTon +
+        results.transportationCostPerDryTon +
+        results.moveInCostPerDryTon;
 
       /*** run TEA funtions ***/
       const cashFlow: CashFlow = params.cashFlow;
