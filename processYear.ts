@@ -173,7 +173,6 @@ export const processClustersForYear = async (
       if (
         results.totalFeedstock > 0 &&
         results.clusters.length < 5000 &&
-        params.treatmentid === 4 &&
         params.system === 'Ground-Based CTL'
       ) {
         console.log('updating move in distance of');
