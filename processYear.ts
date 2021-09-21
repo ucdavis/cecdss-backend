@@ -93,10 +93,17 @@ export const processClustersForYear = async (
         totalTransportationDistance: 0,
       };
 
+      // biomassTarget in metric tons comes from TEA whereas FRCS returns weight in short tons.
+      // we want the units to be consistent in order to compare them later so convert biomassTarget to short tons
       const TONNE_TO_TON = 1.10231; // 1 metric ton = 1.10231 short tons
       biomassTarget = biomassTarget * TONNE_TO_TON;
+
+      /*** feedstock searching algorithm ***/
+      // get the clusters whose total feedstock amount is just greater than biomassTarget
+      // for each cluster, run frcs and transportation model
       while (results.totalFeedstock < biomassTarget) {
         if (
+          // TODO: might need a better terminating condition
           results.radius > 40000 &&
           results.clusters.length > 3800 &&
           results.totalFeedstock / biomassTarget < 0.1
@@ -145,6 +152,10 @@ export const processClustersForYear = async (
           errorIds
         );
       }
+      results.numberOfClusters = results.clusterNumbers.length;
+      console.log(
+        `annualGeneration: ${params.annualGeneration}, radius: ${results.radius}, # of clusters: ${results.numberOfClusters}`
+      );
 
       console.log(`calculating move in distance on ${results.clusters.length} clusters...`);
       const t0 = performance.now();
@@ -161,12 +172,12 @@ export const processClustersForYear = async (
 
       results.tripGeometries = moveInTripResults.trips.map((t) => t.geometry);
 
+      /*** move-in cost calculation ***/
       // we only update the move in distance if it is applicable for this type of treatment & system
       let moveInDistance = 0;
       if (
         results.totalFeedstock > 0 &&
         results.clusters.length < 5000 &&
-        params.treatmentid === 4 &&
         params.system === 'Ground-Based CTL'
       ) {
         console.log('updating move in distance of');
@@ -181,7 +192,7 @@ export const processClustersForYear = async (
         System: params.system,
         MoveInDist: moveInDistance,
         DieselFuelPrice: params.dieselFuelPrice,
-        ChipAll: params.treatmentid === 4 ? true : false, // true if treatment is timberSalvage
+        ChipAll: params.treatmentid === 10 ? true : false, // true if treatment is biomass salvage
       });
 
       console.log(`move in cost: ${moveInCosts.Residue}`);
@@ -189,31 +200,22 @@ export const processClustersForYear = async (
       results.totalMoveInDistance = moveInDistance;
       results.totalMoveInCost = moveInCosts.Residue;
 
-      results.numberOfClusters = results.clusterNumbers.length;
+      /*** run LCA ***/
       console.log(lcaTotals);
-
       const lcaInputs: RunParams = {
         technology: params.teaModel,
-        diesel: lcaTotals.totalDiesel / params.annualGeneration, // MWh
-        gasoline: lcaTotals.totalGasoline / params.annualGeneration, // MWh
-        jetfuel: lcaTotals.totalJetFuel / params.annualGeneration, // MWh
-        distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration, // MWh
+        diesel: lcaTotals.totalDiesel / params.annualGeneration, // gal/kWh
+        gasoline: lcaTotals.totalGasoline / params.annualGeneration, // gal/MWh
+        jetfuel: lcaTotals.totalJetFuel / params.annualGeneration, // gal/MWh
+        distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration, // km/MWh
       };
       console.log('running LCA...');
       console.log('lcaInputs:');
       console.log(lcaInputs);
       console.log('lcaTotals:');
       console.log(lcaTotals);
-      console.log(
-        `annualGeneration: ${params.annualGeneration}, radius: ${results.radius}, # of clusters: ${results.numberOfClusters}`
-      );
       const lca = await runLca(lcaInputs);
       results.lcaResults = lca;
-      const fuelCost =
-        (results.totalFeedstockCost + results.totalTransportationCost + results.totalMoveInCost) /
-        results.totalFeedstock; // $ / wet short ton
-      // return updated fuel cost so that tea results can be updated later
-      results.fuelCost = fuelCost;
 
       const moistureContentPercentage = params.moistureContent / 100.0;
       // calculate dry values ($ / dry short ton)
@@ -225,11 +227,13 @@ export const processClustersForYear = async (
         results.totalTransportationCost / results.totalDryFeedstock;
       results.moveInCostPerDryTon = results.totalMoveInCost / results.totalDryFeedstock;
       results.totalCostPerDryTon =
-        (results.totalFeedstockCost + results.totalTransportationCost + results.totalMoveInCost) /
-        results.totalDryFeedstock;
+        results.harvestCostPerDryTon +
+        results.transportationCostPerDryTon +
+        results.moveInCostPerDryTon;
 
+      /*** run TEA funtions ***/
       const cashFlow: CashFlow = params.cashFlow;
-      cashFlow.BiomassFuelCost = fuelCost * params.biomassTarget;
+      cashFlow.BiomassFuelCost = results.totalFeedstockCost + results.totalTransportationCost + results.totalMoveInCost;
       const energyRevenueRequired = calculateEnergyRevenueRequired(
         params.teaModel,
         params.cashFlow
@@ -237,7 +241,8 @@ export const processClustersForYear = async (
       results.energyRevenueRequired = energyRevenueRequired;
       cashFlow.EnergyRevenueRequired = energyRevenueRequired;
       const energyRevenueRequiredPresent = calculateEnergyRevenueRequiredPW(
-        params.year - 2020 + 1,
+        // in the future, if users can choose which year to start, then 2016 should be replaced by the users choice
+        params.year - 2016 + 1, // currently, the first year is 2016
         params.costOfEquity,
         energyRevenueRequired
       );
