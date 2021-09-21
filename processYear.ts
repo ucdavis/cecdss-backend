@@ -216,11 +216,6 @@ export const processClustersForYear = async (
       console.log(lcaTotals);
       const lca = await runLca(lcaInputs);
       results.lcaResults = lca;
-      const fuelCost =
-        (results.totalFeedstockCost + results.totalTransportationCost + results.totalMoveInCost) /
-        results.totalFeedstock; // $ / wet short ton
-      // return updated fuel cost so that tea results can be updated later
-      results.fuelCost = fuelCost;
 
       const moistureContentPercentage = params.moistureContent / 100.0;
       // calculate dry values ($ / dry short ton)
