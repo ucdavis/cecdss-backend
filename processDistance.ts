@@ -103,8 +103,18 @@ export const processClustersByDistance = async (
 
         const clusterCoordinates = results.clusters.map((c) => [c.center_lng, c.center_lat]);
 
-        const bias = 1.5; // multiply stdev with this factor, the smaller the more clusters
-        const chunkedClusters = geocluster(clusterCoordinates, bias);
+        const maxClustersPerChunk = 4000;
+
+        let chunkedClusters: any[] = [];
+        let bias = 1.5; // multiply stdev with this factor, the smaller the more clusters
+        chunkedClusters = geocluster(clusterCoordinates, bias);
+
+        // we want to make sure there are no clusters with more than maxClustersPerChunk
+        while (Math.max(...chunkedClusters.map((cc) => cc.elements.length)) > maxClustersPerChunk) {
+          console.log(`clusters too large with bias ${bias}, retrying with smaller bias`);
+          bias = bias * 0.8; // make the stdev smaller to get more clusters
+          chunkedClusters = geocluster(clusterCoordinates, bias);
+        }
 
         console.log('number of chunks:', chunkedClusters.length);
         console.log('clusters in chunk1:' + chunkedClusters[0].elements.length);
