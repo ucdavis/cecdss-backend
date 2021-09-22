@@ -205,9 +205,9 @@ export const processClustersForYear = async (
       const lcaInputs: RunParams = {
         technology: params.teaModel,
         diesel: lcaTotals.totalDiesel / params.annualGeneration, // gal/kWh
-        gasoline: lcaTotals.totalGasoline / params.annualGeneration, // gal/MWh
-        jetfuel: lcaTotals.totalJetFuel / params.annualGeneration, // gal/MWh
-        distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration, // km/MWh
+        gasoline: lcaTotals.totalGasoline / params.annualGeneration, // gal/kWh
+        jetfuel: lcaTotals.totalJetFuel / params.annualGeneration, // gal/kWh
+        distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration, // km/kWh
       };
       console.log('running LCA...');
       console.log('lcaInputs:');
