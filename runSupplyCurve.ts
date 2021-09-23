@@ -119,7 +119,7 @@ const run = async () => {
     );
 
     const totalCostPerDryTon =
-      (distanceResult.totalFeedstockCost +
+      (distanceResult.totalHarvestCost +
         distanceResult.totalTransportationCost +
         distanceResult.totalMoveInCost) /
       distanceResult.totalDryFeedstock;
