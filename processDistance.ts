@@ -47,7 +47,7 @@ export const processClustersByDistance = async (
         totalArea: 0,
         totalFeedstock: 0,
         totalDryFeedstock: 0,
-        totalFeedstockCost: 0,
+        totalHarvestCost: 0,
         totalCoproduct: 0,
         totalDryCoproduct: 0,
         totalCoproductCost: 0,
@@ -223,7 +223,7 @@ export const processClustersByDistance = async (
       results.totalDryFeedstock = results.totalFeedstock * (1 - moistureContentPercentage);
       results.totalDryCoproduct = results.totalCoproduct * (1 - moistureContentPercentage);
 
-      results.harvestCostPerDryTon = results.totalFeedstockCost / results.totalDryFeedstock;
+      results.harvestCostPerDryTon = results.totalHarvestCost / results.totalDryFeedstock;
       results.transportationCostPerDryTon =
         results.totalTransportationCost / results.totalDryFeedstock;
       results.moveInCostPerDryTon = results.totalMoveInCost / results.totalDryFeedstock;
@@ -234,7 +234,7 @@ export const processClustersByDistance = async (
 
       const cashFlow: CashFlow = params.cashFlow;
       // TODO: check that this is the proper way to calc biomass fuel cost
-      cashFlow.BiomassFuelCost = results.totalFeedstockCost + results.totalTransportationCost + results.totalMoveInCost;
+      cashFlow.BiomassFuelCost = results.totalHarvestCost + results.totalTransportationCost + results.totalMoveInCost;
       const energyRevenueRequired = calculateEnergyRevenueRequired(
         params.teaModel,
         params.cashFlow
@@ -344,7 +344,7 @@ const selectClusters = async (
         );
 
         results.totalFeedstock += clusterFeedstock;
-        results.totalFeedstockCost += frcsResult.Residue.CostPerAcre * cluster.area;
+        results.totalHarvestCost += frcsResult.Residue.CostPerAcre * cluster.area;
         results.totalCoproduct += clusterCoproduct;
         results.totalCoproductCost +=
           (frcsResult.Total.CostPerAcre - frcsResult.Residue.CostPerAcre) * cluster.area;
