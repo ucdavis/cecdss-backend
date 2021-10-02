@@ -4,7 +4,7 @@ import {
   InputModGP,
   InputModGPO,
   InputModTransimission
-} from '@ucdavis/tea/out/models/input.model';
+} from '@ucdavis/tea/input.model';
 import {
   CashFlow,
   CashFlowCHP,
@@ -12,7 +12,7 @@ import {
   OutputModCHP,
   OutputModGP,
   OutputModGPO
-} from '@ucdavis/tea/out/models/output.model';
+} from '@ucdavis/tea/output.model';
 import OSRM from 'osrm';
 import { LCAresults } from './lcaModels';
 
@@ -25,6 +25,7 @@ export interface RequestParams {
   treatmentid: number;
   dieselFuelPrice: number; // $/gal
   biomassTarget: number;
+  firstYear: number;
   year: number;
   clusterIds: string[];
   errorIds: string[];
@@ -34,6 +35,10 @@ export interface RequestParams {
   moistureContent: number; // for frcs
   cashFlow: CashFlow | CashFlowCHP | CashFlowGP;
   costOfEquity: number;
+  generalInflation: number;
+  carbonCreditPrice: number;
+  energyEconomyRatio: number;
+  includeCarbonCredit: boolean;
 }
 
 export interface RequestByDistanceParams {
@@ -42,6 +47,7 @@ export interface RequestByDistanceParams {
   system: string;
   treatmentid: number;
   dieselFuelPrice: number; // $/gal
+  firstYear: number;
   year: number;
   minRadiusInMeters: number;
   maxRadiusInMeters: number;
@@ -50,6 +56,10 @@ export interface RequestByDistanceParams {
   moistureContent: number; // for frcs
   cashFlow: CashFlow | CashFlowCHP | CashFlowGP;
   costOfEquity: number;
+  generalInflation: number;
+  carbonCreditPrice: number;
+  energyEconomyRatio: number;
+  includeCarbonCredit: boolean;
 }
 
 export interface RequestByRoutesParams {

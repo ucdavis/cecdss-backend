@@ -63,6 +63,7 @@ const run = async () => {
     system: harvestSystem,
     treatmentid: treatmentId,
     dieselFuelPrice: 3.251,
+    firstYear: 2016,
     year: 2016,
     minRadiusInMeters: 0,
     maxRadiusInMeters: 0,
@@ -89,8 +90,13 @@ const run = async () => {
       Taxes: 162218.89510713916,
       EnergyRevenueRequired: 23242211.267465867,
       BiomassFuelCost: 8278009.527551053,
+      LcfsCreditRevenue: 0,
     },
     costOfEquity: 15,
+    generalInflation: 2.1,
+    carbonCreditPrice: 196,
+    energyEconomyRatio: 1,
+    includeCarbonCredit: false
   };
 
   for (let i = 1; i < bandsInMiles.length; i++) {
