@@ -2,19 +2,15 @@ import { getMoveInCosts } from '@ucdavis/frcs';
 import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
 import { runLCA } from '@ucdavis/lca';
 import { RunParams } from '@ucdavis/lca/out/lca.model';
+import { CashFlow, OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/output.model';
 import {
-  calculateEnergyRevenueRequired,
-  calculateEnergyRevenueRequiredPW,
+  computeCarbonCredit,
+  computeEnergyRevenueRequired,
+  computeEnergyRevenueRequiredPW,
   gasificationPower,
   genericCombinedHeatPower,
   genericPowerOnly,
-} from '@ucdavis/tea';
-import {
-  CashFlow,
-  OutputModCHP,
-  OutputModGP,
-  OutputModGPO,
-} from '@ucdavis/tea/out/models/output.model';
+} from '@ucdavis/tea/utility';
 import { getBoundsOfDistance, getDistance } from 'geolib';
 import Knex from 'knex';
 import OSRM from 'osrm';
@@ -207,7 +203,7 @@ export const processClustersForYear = async (
         diesel: lcaTotals.totalDiesel / params.annualGeneration, // gal/kWh
         gasoline: lcaTotals.totalGasoline / params.annualGeneration, // gal/kWh
         jetfuel: lcaTotals.totalJetFuel / params.annualGeneration, // gal/kWh
-        distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration, // km/kWh
+        distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration, // miles/kWh
       };
       console.log('running LCA...');
       console.log('lcaInputs:');
@@ -231,18 +227,29 @@ export const processClustersForYear = async (
         results.transportationCostPerDryTon +
         results.moveInCostPerDryTon;
 
-      /*** run TEA funtions ***/
+      /*** run TEA ***/
       const cashFlow: CashFlow = params.cashFlow;
-      cashFlow.BiomassFuelCost = results.totalHarvestCost + results.totalTransportationCost + results.totalMoveInCost;
-      const energyRevenueRequired = calculateEnergyRevenueRequired(
+      cashFlow.BiomassFuelCost = // update annual feedstock (biomass fuel) cost
+        results.totalHarvestCost + results.totalTransportationCost + results.totalMoveInCost;
+      const carbonIntensity = (lca.lciResults.CI * 1000) / 3.6; // convert from kg/kWh to g/MJ
+      cashFlow.LcfsCreditRevenue = computeCarbonCredit(
+        params.year,
+        params.firstYear,
+        params.carbonCreditPrice,
+        carbonIntensity,
+        params.energyEconomyRatio,
+        params.generalInflation,
+        params.annualGeneration
+      ); // update LCFS credit revenue
+      const energyRevenueRequired = computeEnergyRevenueRequired(
         params.teaModel,
-        params.cashFlow
+        params.cashFlow,
+        params.includeCarbonCredit
       );
       results.energyRevenueRequired = energyRevenueRequired;
       cashFlow.EnergyRevenueRequired = energyRevenueRequired;
-      const energyRevenueRequiredPresent = calculateEnergyRevenueRequiredPW(
-        // in the future, if users can choose which year to start, then 2016 should be replaced by the users choice
-        params.year - 2016 + 1, // currently, the first year is 2016
+      const energyRevenueRequiredPresent = computeEnergyRevenueRequiredPW(
+        params.year - params.firstYear + 1, // currently, the first year is 2016
         params.costOfEquity,
         energyRevenueRequired
       );

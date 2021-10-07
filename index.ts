@@ -1,7 +1,6 @@
 import { RunParams } from '@ucdavis/lca/out/lca.model';
-import { transmission } from '@ucdavis/tea';
-import { InputModTransimission } from '@ucdavis/tea/out/models/input.model';
-import { OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/out/models/output.model';
+import { OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/output.model';
+import { transmission } from '@ucdavis/tea/utility';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -28,7 +27,7 @@ import {
 import { processClustersByDistance } from './processDistance';
 import { getTeaOutputs, processClustersForYear, runLca } from './processYear';
 import { testRunFrcsOnCluster } from './runFrcs';
-import { FULL_TRUCK_PAYLOAD, getTransportationCostTotal, KM_TO_MILES } from './transportation';
+import { getTransportationCostTotal, KM_TO_MILES } from './transportation';
 
 const PG_DECIMAL_OID = 1700;
 pg.types.setTypeParser(PG_DECIMAL_OID, parseFloat);

@@ -2,19 +2,15 @@ import { getMoveInCosts } from '@ucdavis/frcs';
 import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
 import { runLCA } from '@ucdavis/lca';
 import { RunParams } from '@ucdavis/lca/out/lca.model';
+import { CashFlow, OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/output.model';
 import {
-  calculateEnergyRevenueRequired,
-  calculateEnergyRevenueRequiredPW,
+  computeCarbonCredit,
+  computeEnergyRevenueRequired,
+  computeEnergyRevenueRequiredPW,
   gasificationPower,
   genericCombinedHeatPower,
   genericPowerOnly,
-} from '@ucdavis/tea';
-import {
-  CashFlow,
-  OutputModCHP,
-  OutputModGP,
-  OutputModGPO,
-} from '@ucdavis/tea/out/models/output.model';
+} from '@ucdavis/tea/utility';
 import geocluster from 'geocluster';
 import Knex from 'knex';
 import OSRM from 'osrm';
@@ -234,15 +230,27 @@ export const processClustersByDistance = async (
 
       const cashFlow: CashFlow = params.cashFlow;
       // TODO: check that this is the proper way to calc biomass fuel cost
-      cashFlow.BiomassFuelCost = results.totalHarvestCost + results.totalTransportationCost + results.totalMoveInCost;
-      const energyRevenueRequired = calculateEnergyRevenueRequired(
+      cashFlow.BiomassFuelCost =
+        results.totalHarvestCost + results.totalTransportationCost + results.totalMoveInCost;
+      const carbonIntensity = (lca.lciResults.CI * 1000) / 3.6; // convert from kg/kWh to g/MJ
+      cashFlow.LcfsCreditRevenue = computeCarbonCredit(
+        params.year,
+        params.firstYear,
+        params.carbonCreditPrice,
+        carbonIntensity,
+        params.energyEconomyRatio,
+        params.generalInflation,
+        params.annualGeneration
+      ); // update LCFS credit revenue
+      const energyRevenueRequired = computeEnergyRevenueRequired(
         params.teaModel,
-        params.cashFlow
+        params.cashFlow,
+        params.includeCarbonCredit
       );
       results.energyRevenueRequired = energyRevenueRequired;
       cashFlow.EnergyRevenueRequired = energyRevenueRequired;
-      const energyRevenueRequiredPresent = calculateEnergyRevenueRequiredPW(
-        params.year - 2016 + 1, // currently, the first year is 2016
+      const energyRevenueRequiredPresent = computeEnergyRevenueRequiredPW(
+        params.year - params.firstYear + 1, // currently, the first year is 2016
         params.costOfEquity,
         energyRevenueRequired
       );
