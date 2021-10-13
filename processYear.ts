@@ -214,9 +214,9 @@ export const processClustersForYear = async (
       results.lcaResults = lca;
 
       const moistureContentPercentage = params.moistureContent / 100.0;
-      // calculate dry values ($ / dry short ton)
-      results.totalDryFeedstock = results.totalFeedstock * (1 - moistureContentPercentage);
-      results.totalDryCoproduct = results.totalCoproduct * (1 - moistureContentPercentage);
+      // calculate dry values ($ / dry metric ton)
+      results.totalDryFeedstock = results.totalFeedstock * (1 - moistureContentPercentage) / TONNE_TO_TON;
+      results.totalDryCoproduct = results.totalCoproduct * (1 - moistureContentPercentage) / TONNE_TO_TON;
 
       results.harvestCostPerDryTon = results.totalHarvestCost / results.totalDryFeedstock;
       results.transportationCostPerDryTon =
@@ -408,6 +408,14 @@ const selectClusters = async (
 export const runLca = async (inputs: RunParams) => {
   const results: LCAresults = await runLCA(inputs);
   results.inputs = inputs;
+  // convert US units to SI units: gallon to liter, mile to km
+  const GALLON_TO_LITER = 3.78541;
+  const MILE_TO_KM = 1.60934;
+  results.inputs.diesel *= GALLON_TO_LITER; // L/kWh
+  results.inputs.gasoline *= GALLON_TO_LITER; // L/kWh
+  results.inputs.jetfuel *= GALLON_TO_LITER; // L/kWh
+  results.inputs.distance *= MILE_TO_KM; // km/kWh
+
   return results;
 };
 
@@ -495,4 +503,5 @@ const getErrorGeoJson = async (
     });
     res(features);
   });
+// tslint:disable-next-line: max-file-line-count
 };
