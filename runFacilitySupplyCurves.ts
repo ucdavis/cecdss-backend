@@ -171,7 +171,11 @@ const run = async () => {
     }
 
     // write to csv file
-    const fileName = `${facilityName}_${treatmentId}_${harvestSystem}.csv`;
+    let fileName = `${facilityName}_${treatmentId}_${harvestSystem}.csv`;
+
+    // replace non-alphanumeric characters with underscores
+    fileName = fileName.replace(/[^a-z0-9]/gi, '_');
+    
     let fileContents =
       'system,treatment,teaModel,band,totalDryFeedstock,totalCost,totalCostPerDryTon,runningTotalDryFeedstock,runningTotalCost\n';
     allResults.forEach((result) => {
