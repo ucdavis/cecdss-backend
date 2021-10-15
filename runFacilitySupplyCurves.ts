@@ -175,7 +175,7 @@ const run = async () => {
 
     // replace non-alphanumeric characters with underscores
     fileName = fileName.replace(/[^a-z0-9]/gi, '_');
-    
+
     let fileContents =
       'system,treatment,teaModel,band,totalDryFeedstock,totalCost,totalCostPerDryTon,runningTotalDryFeedstock,runningTotalCost\n';
     allResults.forEach((result) => {
