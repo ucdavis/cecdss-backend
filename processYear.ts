@@ -319,7 +319,7 @@ const selectClusters = async (
           { lat: params.lat, lng: params.lng },
           { lat: cluster.center_lat, lng: cluster.center_lng }
         );
-        if (distanceToBiomassCenter > params.radius) {
+        if (distanceToBiomassCenter > results.radius) {
           continue;
         }
 
