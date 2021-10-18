@@ -315,11 +315,11 @@ const selectClusters = async (
         // results.skippedClusters.push(cluster); // keeping for testing for now
         break;
       } else {
-        const distanceToFacility = getDistance(
-          { lat: params.facilityLat, lng: params.facilityLng },
+        const distanceToBiomassCenter = getDistance(
+          { lat: params.lat, lng: params.lng },
           { lat: cluster.center_lat, lng: cluster.center_lng }
         );
-        if (distanceToFacility > params.radius) {
+        if (distanceToBiomassCenter > params.radius) {
           continue;
         }
 
