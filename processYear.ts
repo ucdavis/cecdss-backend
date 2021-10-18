@@ -285,15 +285,15 @@ const getClusters = async (
   radius: number
 ): Promise<TreatedCluster[]> => {
   return new Promise(async (res, rej) => {
+    const bounds = getBoundsOfDistance({ latitude: params.lat, longitude: params.lng }, radius);
     const clusters: TreatedCluster[] = await db
       .table('treatedclusters')
       .where({ treatmentid: params.treatmentid })
       .where({ year: 2016 }) // TODO: filter by actual year if we get data for multiple years
       .whereIn('land_use', ['private', 'USDA Forest Service'])
       .whereNotIn('cluster_no', [...usedIds, ...errorIds])
-      .andWhereRaw(
-        `ST_DistanceSphere(ST_MakePoint(${params.lng},${params.lat}), ST_MakePoint(center_lng,center_lat)) <= ${radius}`
-      );
+      .whereBetween('center_lat', [bounds[0].latitude, bounds[1].latitude])
+      .andWhereBetween('center_lng', [bounds[0].longitude, bounds[1].longitude]);
 
     res(clusters);
   });
@@ -315,6 +315,14 @@ const selectClusters = async (
         // results.skippedClusters.push(cluster); // keeping for testing for now
         break;
       } else {
+        const distanceToBiomassCenter = getDistance(
+          { lat: params.lat, lng: params.lng },
+          { lat: cluster.center_lat, lng: cluster.center_lng }
+        );
+        if (distanceToBiomassCenter > params.radius) {
+          continue;
+        }
+
         try {
           const frcsResult: OutputVarMod = await runFrcsOnCluster(
             cluster,
@@ -503,5 +511,5 @@ const getErrorGeoJson = async (
     });
     res(features);
   });
-// tslint:disable-next-line: max-file-line-count
+  // tslint:disable-next-line: max-file-line-count
 };
