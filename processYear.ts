@@ -215,8 +215,10 @@ export const processClustersForYear = async (
 
       const moistureContentPercentage = params.moistureContent / 100.0;
       // calculate dry values ($ / dry metric ton)
-      results.totalDryFeedstock = results.totalFeedstock * (1 - moistureContentPercentage) / TONNE_TO_TON;
-      results.totalDryCoproduct = results.totalCoproduct * (1 - moistureContentPercentage) / TONNE_TO_TON;
+      results.totalDryFeedstock =
+        (results.totalFeedstock * (1 - moistureContentPercentage)) / TONNE_TO_TON;
+      results.totalDryCoproduct =
+        (results.totalCoproduct * (1 - moistureContentPercentage)) / TONNE_TO_TON;
 
       results.harvestCostPerDryTon = results.totalHarvestCost / results.totalDryFeedstock;
       results.transportationCostPerDryTon =
@@ -295,7 +297,16 @@ const getClusters = async (
       .whereBetween('center_lat', [bounds[0].latitude, bounds[1].latitude])
       .andWhereBetween('center_lng', [bounds[0].longitude, bounds[1].longitude]);
 
-    res(clusters);
+    // only include those clusters that are inside a circular radius
+    const clustersInCircle = clusters.filter(
+      (c) =>
+        getDistance(
+          { latitude: params.lat, longitude: params.lng },
+          { latitude: c.center_lat, longitude: c.center_lng }
+        ) <= radius
+    );
+
+    res(clustersInCircle);
   });
 };
 
@@ -503,5 +514,5 @@ const getErrorGeoJson = async (
     });
     res(features);
   });
-// tslint:disable-next-line: max-file-line-count
+  // tslint:disable-next-line: max-file-line-count
 };
