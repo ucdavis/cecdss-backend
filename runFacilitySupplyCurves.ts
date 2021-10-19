@@ -72,12 +72,12 @@ const run = async () => {
       }
 
       // determine csv file name and only run if file does not already exist
-      let fileName = `${facilityName}_${treatmentId}_${harvestSystem}.csv`;
+      let fileName = `${facilityName}_${treatmentId}_${harvestSystem}`;
 
       // replace non-alphanumeric characters with underscores
       fileName = fileName.replace(/[^a-z0-9]/gi, '_');
 
-      const fileWithDirectory = (process.env.CSV_DIR || './data/') + fileName;
+      const fileWithDirectory = (process.env.CSV_DIR || './data/results/') + fileName + '.csv';
 
       // continue if filename is present on disk
       if (fs.existsSync(fileWithDirectory)) {
@@ -158,7 +158,9 @@ const run = async () => {
           runParams.year
         );
         console.log(
-          `distance: ${runParams.minRadiusInMeters} -> ${runParams.maxRadiusInMeters}, # of clusters: ${distanceResult.clusterNumbers.length}`
+          `distance: ${runParams.minRadiusInMeters} -> ${runParams.maxRadiusInMeters}, band ${
+            bandsInMiles[i - 1]
+          }, # of clusters: ${distanceResult.clusterNumbers.length}`
         );
 
         const totalCostPerDryTon =
