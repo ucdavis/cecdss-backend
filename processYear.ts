@@ -13,10 +13,10 @@ import {
 } from '@ucdavis/tea/utility';
 import { getBoundsOfDistance, getDistance } from 'geolib';
 import Knex from 'knex';
+import { ProcessedTreatedCluster } from 'models/processedtreatedcluster';
 import OSRM from 'osrm';
 import { performance } from 'perf_hooks';
 import { LCAresults } from './models/lcaModels';
-import { TreatedCluster } from './models/treatedcluster';
 import {
   ClusterErrorResult,
   ClusterResult,
@@ -114,7 +114,7 @@ export const processClustersForYear = async (
             results.totalFeedstock
           }, biomassTarget: ${biomassTarget}, ${results.totalFeedstock < biomassTarget} ...`
         );
-        const clusters: TreatedCluster[] = await getClusters(
+        const clusters: ProcessedTreatedCluster[] = await getClusters(
           db,
           params,
           year,
@@ -124,29 +124,18 @@ export const processClustersForYear = async (
         );
         console.log(`year:${year} clusters found: ${clusters.length}`);
         console.log(`year:${year} sorting clusters...`);
-        // TODO: sort in query
+
+        // process clusters
+        await processClusters(osrm, params, clusters, results, errorIds);
+
         const sortedClusters = clusters.sort(
           (a, b) =>
-            getDistance(
-              { lat: params.lat, lng: params.lng },
-              { lat: a.landing_lat, lng: a.landing_lng }
-            ) -
-            getDistance(
-              { lat: params.lat, lng: params.lng },
-              { lat: b.landing_lat, lng: b.landing_lng }
-            )
+            (a.feedstockHarvestCost + a.transportationCost) / a.feedstock -
+            (b.feedstockHarvestCost + b.transportationCost) / b.feedstock
         );
+
         console.log(`year:${year} selecting clusters...`);
-        await selectClusters(
-          osrm,
-          params,
-          biomassTarget,
-          sortedClusters,
-          results,
-          lcaTotals,
-          usedIds,
-          errorIds
-        );
+        await selectClusters(biomassTarget, sortedClusters, results, lcaTotals, usedIds);
       }
       results.numberOfClusters = results.clusterNumbers.length;
       console.log(
@@ -171,10 +160,7 @@ export const processClustersForYear = async (
       /*** move-in cost calculation ***/
       // we only update the move in distance if it is applicable for this type of treatment & system
       let moveInDistance = 0;
-      if (
-        results.totalFeedstock > 0 &&
-        params.system === 'Ground-Based CTL'
-      ) {
+      if (results.totalFeedstock > 0 && params.system === 'Ground-Based CTL') {
         console.log('updating move in distance of');
         moveInDistance = moveInTripResults.distance;
       } else {
@@ -284,10 +270,10 @@ const getClusters = async (
   usedIds: string[],
   errorIds: string[],
   radius: number
-): Promise<TreatedCluster[]> => {
+): Promise<ProcessedTreatedCluster[]> => {
   return new Promise(async (res, rej) => {
     const bounds = getBoundsOfDistance({ latitude: params.lat, longitude: params.lng }, radius);
-    const clusters: TreatedCluster[] = await db
+    const clusters: ProcessedTreatedCluster[] = await db
       .table('treatedclusters')
       .where({ treatmentid: params.treatmentid })
       .where({ year: 2016 }) // TODO: filter by actual year if we get data for multiple years
@@ -309,15 +295,85 @@ const getClusters = async (
   });
 };
 
-const selectClusters = async (
+const processClusters = async (
   osrm: OSRM,
   params: RequestParams,
+  clusters: ProcessedTreatedCluster[],
+  results: YearlyResult,
+  errorIds: string[]
+) => {
+  return new Promise<void>(async (res, rej) => {
+    for (const cluster of clusters) {
+      try {
+        const frcsResult: OutputVarMod = await runFrcsOnCluster(
+          cluster,
+          params.system,
+          params.dieselFuelPrice,
+          params.moistureContent
+        );
+        const clusterFeedstock = frcsResult.Residue.WeightPerAcre * cluster.area; // green tons
+        const clusterCoproduct =
+          (frcsResult.Total.WeightPerAcre - frcsResult.Residue.WeightPerAcre) * cluster.area; // green tons
+        if (clusterFeedstock < 1) {
+          throw new Error(`Cluster biomass was: ${clusterFeedstock}, which is too low to use`);
+        }
+
+        const routeOptions: OSRM.RouteOptions = {
+          coordinates: [
+            [params.facilityLng, params.facilityLat],
+            [cluster.landing_lng, cluster.landing_lat],
+          ],
+          annotations: ['duration', 'distance'],
+        };
+        // currently distance is the osrm generated distance between each landing site and the facility location
+        const route: any = await getRouteDistanceAndDuration(osrm, routeOptions);
+        // number of trips is how many truckloads it takes to transport biomass
+        const numberOfTripsForTransportation = Math.ceil(clusterFeedstock / FULL_TRUCK_PAYLOAD);
+        // multiply the osrm road distance by number of trips, transportation eq doubles it for round trip
+        const distance = route.distance / 1000; // m to km
+        const duration = route.duration / 3600; // seconds to hours
+        const transportationCostTotal = getTransportationCostTotal(
+          clusterFeedstock,
+          distance,
+          duration,
+          params.dieselFuelPrice
+        );
+
+        cluster.feedstock = clusterFeedstock;
+        cluster.feedstockHarvestCost = frcsResult.Residue.CostPerAcre * cluster.area;
+        cluster.coproduct = clusterCoproduct;
+        cluster.coproductHarvestCost =
+          (frcsResult.Total.CostPerAcre - frcsResult.Residue.CostPerAcre) * cluster.area;
+        cluster.frcsResult = frcsResult;
+        cluster.transportationCost = transportationCostTotal;
+        cluster.diesel = frcsResult.Residue.DieselPerAcre * cluster.area;
+        cluster.gasoline = frcsResult.Residue.GasolinePerAcre * cluster.area;
+        cluster.juetFuel = frcsResult.Residue.JetFuelPerAcre * cluster.area;
+        cluster.distance = distance;
+        cluster.transportationDistance = distance * 2 * numberOfTripsForTransportation;
+      } catch (err) {
+        // swallow errors frcs throws and push the error message instead
+        results.errorClusters.push({
+          cluster_no: cluster.cluster_no,
+          area: cluster.area,
+          biomass: 0,
+          error: err.message,
+          slope: cluster.slope,
+        });
+        results.errorClusterNumbers.push(cluster.cluster_no);
+        errorIds.push(cluster.cluster_no);
+      }
+    }
+    res();
+  });
+};
+
+const selectClusters = async (
   biomassTarget: number,
-  sortedClusters: TreatedCluster[],
+  sortedClusters: ProcessedTreatedCluster[],
   results: YearlyResult,
   lcaTotals: LCATotals,
-  usedIds: string[],
-  errorIds: string[]
+  usedIds: string[]
 ) => {
   return new Promise<void>(async (res, rej) => {
     for (const cluster of sortedClusters) {
@@ -325,90 +381,38 @@ const selectClusters = async (
         // results.skippedClusters.push(cluster); // keeping for testing for now
         break;
       } else {
-        try {
-          const frcsResult: OutputVarMod = await runFrcsOnCluster(
-            cluster,
-            params.system,
-            params.dieselFuelPrice,
-            params.moistureContent
-          );
+        results.totalFeedstock += cluster.feedstock;
+        results.totalHarvestCost += cluster.feedstockHarvestCost;
+        results.totalCoproduct += cluster.coproduct;
+        results.totalCoproductCost += cluster.coproductHarvestCost;
+        results.totalArea += cluster.area;
+        results.totalTransportationCost += cluster.transportationCost;
+        lcaTotals.totalTransportationDistance += cluster.transportationDistance;
+        lcaTotals.totalDiesel += cluster.diesel;
+        lcaTotals.totalGasoline += cluster.gasoline;
+        lcaTotals.totalJetFuel += cluster.juetFuel;
 
-          // use frcs calculated available feedstock
-          const clusterFeedstock = frcsResult.Residue.WeightPerAcre * cluster.area; // green tons
-          const clusterCoproduct =
-            (frcsResult.Total.WeightPerAcre - frcsResult.Residue.WeightPerAcre) * cluster.area; // green tons
-          if (clusterFeedstock < 1) {
-            throw new Error(`Cluster biomass was: ${clusterFeedstock}, which is too low to use`);
-          }
-
-          const routeOptions: OSRM.RouteOptions = {
-            coordinates: [
-              [params.facilityLng, params.facilityLat],
-              [cluster.landing_lng, cluster.landing_lat],
-            ],
-            annotations: ['duration', 'distance'],
-          };
-
-          // currently distance is the osrm generated distance between each landing site and the facility location
-          const route: any = await getRouteDistanceAndDuration(osrm, routeOptions);
-          // number of trips is how many truckloads it takes to transport biomass
-          const numberOfTripsForTransportation = Math.ceil(clusterFeedstock / FULL_TRUCK_PAYLOAD);
-          // multiply the osrm road distance by number of trips, transportation eq doubles it for round trip
-          const distance = route.distance / 1000; // m to km
-          const duration = route.duration / 3600; // seconds to hours
-          const transportationCostTotal = getTransportationCostTotal(
-            clusterFeedstock,
-            distance,
-            duration,
-            params.dieselFuelPrice
-          );
-
-          results.totalFeedstock += clusterFeedstock;
-          results.totalHarvestCost += frcsResult.Residue.CostPerAcre * cluster.area;
-          results.totalCoproduct += clusterCoproduct;
-          results.totalCoproductCost +=
-            (frcsResult.Total.CostPerAcre - frcsResult.Residue.CostPerAcre) * cluster.area;
-
-          results.totalArea += cluster.area;
-          results.totalTransportationCost += transportationCostTotal;
-          lcaTotals.totalDiesel += frcsResult.Residue.DieselPerAcre * cluster.area;
-          lcaTotals.totalGasoline += frcsResult.Residue.GasolinePerAcre * cluster.area;
-          lcaTotals.totalJetFuel += frcsResult.Residue.JetFuelPerAcre * cluster.area;
-          lcaTotals.totalTransportationDistance += distance * 2 * numberOfTripsForTransportation;
-
-          results.clusters.push({
-            cluster_no: cluster.cluster_no,
-            area: cluster.area,
-            biomass: clusterFeedstock,
-            distance: distance,
-            combinedCost: frcsResult.Total.CostPerAcre * cluster.area,
-            residueCost: frcsResult.Residue.CostPerAcre * cluster.area,
-            transportationCost: transportationCostTotal,
-            frcsResult: frcsResult,
-            center_lat: cluster.center_lat,
-            center_lng: cluster.center_lng,
-            landing_lat: cluster.landing_lat,
-            landing_lng: cluster.landing_lng,
-            county: cluster.county,
-            land_use: cluster.land_use,
-            haz_class: cluster.haz_class,
-            forest_type: cluster.forest_type,
-            site_class: cluster.site_class,
-          });
-          results.clusterNumbers.push(cluster.cluster_no);
-          usedIds.push(cluster.cluster_no);
-        } catch (err) {
-          // swallow errors frcs throws and push the error message instead
-          results.errorClusters.push({
-            cluster_no: cluster.cluster_no,
-            area: cluster.area,
-            biomass: 0,
-            error: err.message,
-            slope: cluster.slope,
-          });
-          results.errorClusterNumbers.push(cluster.cluster_no);
-          errorIds.push(cluster.cluster_no);
-        }
+        results.clusters.push({
+          cluster_no: cluster.cluster_no,
+          area: cluster.area,
+          biomass: cluster.feedstock,
+          distance: cluster.distance,
+          combinedCost: cluster.feedstockHarvestCost + cluster.coproductHarvestCost,
+          residueCost: cluster.feedstockHarvestCost,
+          transportationCost: cluster.transportationCost,
+          frcsResult: cluster.frcsResult,
+          center_lat: cluster.center_lat,
+          center_lng: cluster.center_lng,
+          landing_lat: cluster.landing_lat,
+          landing_lng: cluster.landing_lng,
+          county: cluster.county,
+          land_use: cluster.land_use,
+          haz_class: cluster.haz_class,
+          forest_type: cluster.forest_type,
+          site_class: cluster.site_class,
+        });
+        results.clusterNumbers.push(cluster.cluster_no);
+        usedIds.push(cluster.cluster_no);
       }
     }
     res();
