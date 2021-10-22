@@ -126,9 +126,15 @@ export const processClustersForYear = async (
         console.log(`year:${year} sorting clusters...`);
 
         // process clusters
-        await processClusters(osrm, params, clusters, results, errorIds);
+        const harvestableClusters: ProcessedTreatedCluster[] = await processClusters(
+          osrm,
+          params,
+          clusters,
+          results,
+          errorIds
+        );
 
-        const sortedClusters = clusters.sort(
+        const sortedClusters = harvestableClusters.sort(
           (a, b) =>
             (a.feedstockHarvestCost + a.transportationCost) / a.feedstock -
             (b.feedstockHarvestCost + b.transportationCost) / b.feedstock
@@ -302,7 +308,8 @@ const processClusters = async (
   results: YearlyResult,
   errorIds: string[]
 ) => {
-  return new Promise<void>(async (res, rej) => {
+  return new Promise<ProcessedTreatedCluster[]>(async (res, rej) => {
+    const harvestableClusters: ProcessedTreatedCluster[] = [];
     for (const cluster of clusters) {
       try {
         const frcsResult: OutputVarMod = await runFrcsOnCluster(
@@ -351,6 +358,7 @@ const processClusters = async (
         cluster.juetFuel = frcsResult.Residue.JetFuelPerAcre * cluster.area;
         cluster.distance = distance;
         cluster.transportationDistance = distance * 2 * numberOfTripsForTransportation;
+        harvestableClusters.push(cluster);
       } catch (err) {
         // swallow errors frcs throws and push the error message instead
         results.errorClusters.push({
@@ -364,7 +372,7 @@ const processClusters = async (
         errorIds.push(cluster.cluster_no);
       }
     }
-    res();
+    res(harvestableClusters);
   });
 };
 
