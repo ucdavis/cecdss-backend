@@ -374,6 +374,7 @@ const selectClusters = async (
           center_lng: cluster.center_lng,
           landing_lat: cluster.landing_lat,
           landing_lng: cluster.landing_lng,
+          landing_distance: 0, // don't need for supply curves
           county: cluster.county,
           land_use: cluster.land_use,
           haz_class: cluster.haz_class,

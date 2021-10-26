@@ -413,6 +413,10 @@ const selectClusters = async (
           center_lng: cluster.center_lng,
           landing_lat: cluster.landing_lat,
           landing_lng: cluster.landing_lng,
+          landing_distance: getDistance(
+            { latitude: cluster.landing_lat, longitude: cluster.landing_lng },
+            { latitude: cluster.center_lat, longitude: cluster.center_lng }
+          ),
           county: cluster.county,
           land_use: cluster.land_use,
           haz_class: cluster.haz_class,
