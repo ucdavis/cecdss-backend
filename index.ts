@@ -147,10 +147,7 @@ app.post('/initialProcessing', async (req, res) => {
   const biomassTarget = teaOutput.ElectricalAndFuelBaseYear.BiomassTarget;
   // TODO: clean up in TEA models
   const electricalAndFuelBaseYear: any = teaOutput.ElectricalAndFuelBaseYear;
-  const annualGeneration =
-    params.teaModel === 'GP'
-      ? electricalAndFuelBaseYear.AnnualNetElectricityGeneration
-      : electricalAndFuelBaseYear.AnnualGeneration;
+  const annualGeneration = electricalAndFuelBaseYear.AnnualGeneration;
   const results: AllYearsResults = {
     biomassTarget: biomassTarget,
     transmissionResults: transmissionResults,
