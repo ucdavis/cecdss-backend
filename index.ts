@@ -22,7 +22,6 @@ import {
   RequestParams,
   RequestParamsAllYears,
   RequestParamsTest,
-  YearlyResult,
 } from './models/types';
 import { processClustersByDistance } from './processDistance';
 import { getTeaOutputs, processClustersForYear, runLca } from './processYear';
@@ -132,12 +131,7 @@ app.post('/initialProcessing', async (req, res) => {
     `additionalCosts: ${additionalCosts}: ${transmissionResults.AllCost}, ${params.includeUnloadingCost}: ${params.unloadingCost}`
   );
   const teaInputs: any = { ...params.teaInputs };
-  if (params.teaModel === 'GP') {
-    // GP capital costs will be summed in TEA function anyway, so we can just add it to one property
-    teaInputs.CapitalCostElements.GasifierSystemCapitalCost += additionalCosts;
-  } else {
-    teaInputs.CapitalCost += additionalCosts;
-  }
+  teaInputs.CapitalCost += additionalCosts;
   console.log(JSON.stringify(teaInputs));
   const teaOutput: OutputModGPO | OutputModCHP | OutputModGP = await getTeaOutputs(
     params.teaModel,
