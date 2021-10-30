@@ -139,13 +139,11 @@ app.post('/initialProcessing', async (req, res) => {
     teaInputs.CapitalCost += additionalCosts;
   }
   console.log(JSON.stringify(teaInputs));
-  // TODO: use separate TEA endpoint just to get biomass target
   const teaOutput: OutputModGPO | OutputModCHP | OutputModGP = await getTeaOutputs(
     params.teaModel,
     teaInputs
   );
   const biomassTarget = teaOutput.ElectricalAndFuelBaseYear.BiomassTarget;
-  // TODO: clean up in TEA models
   const electricalAndFuelBaseYear: any = teaOutput.ElectricalAndFuelBaseYear;
   const annualGeneration = electricalAndFuelBaseYear.AnnualGeneration;
   const results: AllYearsResults = {
