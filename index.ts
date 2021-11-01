@@ -124,14 +124,10 @@ app.post('/initialProcessing', async (req, res) => {
     `nearest substation: ${nearestSubstation.substation_name} is ${distanceToNearestSubstation} miles away`
   );
   const transmissionResults = transmission(params.transmission);
+  console.log(`transmission cost: ${transmissionResults.AllCost}`);
 
-  const additionalCosts =
-    transmissionResults.AllCost + (params.includeUnloadingCost ? params.unloadingCost : 0);
-  console.log(
-    `additionalCosts: ${additionalCosts}: ${transmissionResults.AllCost}, ${params.includeUnloadingCost}: ${params.unloadingCost}`
-  );
   const teaInputs: any = { ...params.teaInputs };
-  teaInputs.CapitalCost += additionalCosts;
+  teaInputs.CapitalCost += transmissionResults.AllCost;
   console.log(JSON.stringify(teaInputs));
   const teaOutput: OutputModGPO | OutputModCHP | OutputModGP = await getTeaOutputs(
     params.teaModel,

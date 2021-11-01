@@ -97,8 +97,6 @@
 //         Zone12: 0
 //       }
 //     },
-//     unloadingCost: 10000,
-//     includeUnloadingCost: true
 //   };
 
 //   const systems = [
