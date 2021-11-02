@@ -83,8 +83,6 @@ export interface RequestParamsAllYears {
   transmission: InputModTransimission;
   teaModel: string;
   teaInputs: InputModGPO | InputModCHP | InputModGP; // | InputModHydrogen;
-  includeUnloadingCost: boolean;
-  unloadingCost: number; // default to 10,000
 }
 
 export interface AllYearsResults {
