@@ -216,8 +216,10 @@ const calculateMoveInDistance = async (
       `${results.clusters.length} is too many clusters, breaking into ${numChunks} chunks`
     );
 
+    const sortedClusters = results.clusters.sort((a, b) => a.distance - b.distance);
+
     // break up into numChunks chunks by taking clusters in order
-    const groupedClusters = results.clusters.reduce((resultArray, item, index) => {
+    const groupedClusters = sortedClusters.reduce((resultArray, item, index) => {
       const chunkIndex = Math.floor(index / maxClustersPerChunk);
 
       if (!resultArray[chunkIndex]) {
