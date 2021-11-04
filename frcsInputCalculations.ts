@@ -76,8 +76,7 @@ export const getFrcsInputs = (
     TreeVolLLT: !volumeLLT || !removalsLLT ? 0 : volumeLLT / removalsLLT,
     DieselFuelPrice: dieselFuelPrice,
     MoistureContent: moistureContent,
-    ChipAll: cluster.treatmentid === 4 || cluster.treatmentid === 5 ? true : false
-    // true if treatment is timberSalvage or timberSalvageChipTree
+    ChipAll: cluster.treatmentid === 10 ? true : false, // true if treatment is biomass Salvage
   };
   return frcsInputs;
 };
@@ -153,9 +152,7 @@ export const getFrcsInputsTest = (
     TreeVolLLT: !volumeLLT || !removalsLLT ? 0 : volumeLLT / removalsLLT,
     DieselFuelPrice: dieselFuelPrice,
     MoistureContent: moistureContent,
-    ChipAll:
-      fixedClusterUnits.treatmentid === 4 || fixedClusterUnits.treatmentid === 5 ? true : false
-    // true if treatment is timberSalvage or timberSalvageChipTree
+    ChipAll: fixedClusterUnits.treatmentid === 10 ? true : false, // true if treatment is biomass salvage
   };
   return {
     frcsInputs,
@@ -173,7 +170,7 @@ export const getFrcsInputsTest = (
     residueWeightLLT,
     residueFractionLLT,
     volumeLLT,
-    removalsLLT
+    removalsLLT,
   };
 };
 
@@ -351,7 +348,7 @@ export const fixClusterUnits = (pixelSummation: TreatedCluster, numberOfPixels: 
     dbmcn_15: pixelSummation.dbmcn_15 / PIXELS_TO_ACRES / numberOfPixels,
     dbmcn_25: pixelSummation.dbmcn_25 / PIXELS_TO_ACRES / numberOfPixels,
     dbmcn_35: pixelSummation.dbmcn_35 / PIXELS_TO_ACRES / numberOfPixels,
-    dbmcn_40: pixelSummation.dbmcn_40 / PIXELS_TO_ACRES / numberOfPixels
+    dbmcn_40: pixelSummation.dbmcn_40 / PIXELS_TO_ACRES / numberOfPixels,
   };
   return pixelSum;
 };
