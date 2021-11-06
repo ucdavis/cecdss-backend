@@ -145,7 +145,7 @@ export interface YearlyResult {
   harvestCostPerDryTon: number;
   transportationCostPerDryTon: number;
   moveInCostPerDryTon: number;
-  totalCostPerDryTon: number;
+  feedstockCostPerTon: number;
   numberOfClusters: number;
   clusterNumbers: string[];
   clusters: ClusterResult[];
