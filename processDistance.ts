@@ -12,12 +12,13 @@ import {
   genericPowerOnly,
 } from '@ucdavis/tea/utility';
 import geocluster from 'geocluster';
+import { getDistance } from 'geolib';
 import Knex from 'knex';
 import OSRM from 'osrm';
 import { performance } from 'perf_hooks';
 import { LCAresults } from './models/lcaModels';
 import { TreatedCluster } from './models/treatedcluster';
-import { LCATotals, RequestByDistanceParams, YearlyResult } from './models/types';
+import { ClusterResult, LCATotals, RequestByDistanceParams, YearlyResult } from './models/types';
 import { runFrcsOnCluster } from './runFrcs';
 import {
   FULL_TRUCK_PAYLOAD,
@@ -140,8 +141,10 @@ export const processClustersByDistance = async (
 
       const TONNE_TO_TON = 1.10231; // 1 metric ton = 1.10231 short tons
       // calculate dry values ($ / dry metric ton)
-      results.totalDryFeedstock = results.totalFeedstock * (1 - moistureContentPercentage) / TONNE_TO_TON;
-      results.totalDryCoproduct = results.totalCoproduct * (1 - moistureContentPercentage) / TONNE_TO_TON;
+      results.totalDryFeedstock =
+        (results.totalFeedstock * (1 - moistureContentPercentage)) / TONNE_TO_TON;
+      results.totalDryCoproduct =
+        (results.totalCoproduct * (1 - moistureContentPercentage)) / TONNE_TO_TON;
 
       results.harvestCostPerDryTon = results.totalHarvestCost / results.totalDryFeedstock;
       results.transportationCostPerDryTon =
@@ -204,47 +207,57 @@ const calculateMoveInDistance = async (
 ) => {
   let totalMoveInDistance = 0;
 
-  if (results.clusters.length > 500) {
-    console.log('lots of clusters, breaking into chunks');
+  const maxClustersPerChunk = 2000;
 
-    const clusterCoordinates = results.clusters.map((c) => [c.center_lng, c.center_lat]);
+  if (results.clusters.length > maxClustersPerChunk) {
+    // want enough chunks so that we don't exceed max clusters per chunk
+    const numChunks = Math.ceil(results.clusters.length / maxClustersPerChunk);
 
-    const maxClustersPerChunk = 4000;
+    console.log(
+      `${results.clusters.length} is too many clusters, breaking into ${numChunks} chunks`
+    );
 
-    let chunkedClusters: any[] = [];
-    let bias = 1.5; // multiply stdev with this factor, the smaller the more clusters
-    chunkedClusters = geocluster(clusterCoordinates, bias);
+    // assuming facility coordinates are biomass coordinates
+    const sortedClusters = results.clusters.sort(
+      (a, b) =>
+        getDistance(
+          { latitude: params.facilityLat, longitude: params.facilityLng },
+          { latitude: a.center_lat, longitude: a.center_lng }
+        ) -
+        getDistance(
+          { latitude: params.facilityLat, longitude: params.facilityLng },
+          { latitude: b.center_lat, longitude: b.center_lng }
+        )
+    );
 
-    // we want to make sure there are no clusters with more than maxClustersPerChunk
-    while (Math.max(...chunkedClusters.map((cc) => cc.elements.length)) > maxClustersPerChunk) {
-      console.log(`clusters too large with bias ${bias}, retrying with smaller bias`);
-      bias = bias * 0.8; // make the stdev smaller to get more clusters
-      chunkedClusters = geocluster(clusterCoordinates, bias);
-    }
+    // break up into numChunks chunks by taking clusters in order
+    const groupedClusters = sortedClusters.reduce((resultArray, item, index) => {
+      const chunkIndex = Math.floor(index / maxClustersPerChunk);
 
-    console.log('number of chunks:', chunkedClusters.length);
-    console.log('clusters in chunk1:' + chunkedClusters[0].elements.length);
+      if (!resultArray[chunkIndex]) {
+        resultArray[chunkIndex] = []; // start a new chunk
+      }
 
-    for (let i = 0; i < chunkedClusters.length; i++) {
-      const chunk = chunkedClusters[i];
+      resultArray[chunkIndex].push(item);
 
-      const clustersInChunk = chunk.elements.map(
-        (latlng: number[]) =>
-          ({
-            center_lng: latlng[0],
-            center_lat: latlng[1],
-          } as TreatedCluster)
-      );
+      return resultArray;
+      // tslint:disable-next-line:align
+    }, [] as ClusterResult[][]);
+
+    // for each chunk, calculate the move in distance and add them up
+    for (let i = 0; i < groupedClusters.length; i++) {
+      const clustersInGroup = groupedClusters[i];
 
       console.log(
-        `calculating move in distance on ${clustersInChunk.length} clusters in chunk ${i + 1}...`
+        `calculating move in distance on ${clustersInGroup.length} clusters in chunk ${i + 1}...`
       );
+
       const t0_chunk = performance.now();
       const chunkedMoveInTripResults = await getMoveInTrip(
         osrm,
         params.facilityLat,
         params.facilityLng,
-        clustersInChunk
+        clustersInGroup
       );
       const t1_chunk = performance.now();
       console.log(
@@ -403,7 +416,7 @@ const selectClusters = async (
 export const runLca = async (inputs: RunParams) => {
   const results: LCAresults = await runLCA(inputs);
   results.inputs = inputs;
-    // convert US units to SI units: gallon to liter, mile to km
+  // convert US units to SI units: gallon to liter, mile to km
   const GALLON_TO_LITER = 3.78541;
   const MILE_TO_KM = 1.60934;
   results.inputs.diesel *= GALLON_TO_LITER; // L/kWh
