@@ -68,7 +68,7 @@ export const processClustersForYear = async (
         harvestCostPerDryTon: 0,
         transportationCostPerDryTon: 0,
         moveInCostPerDryTon: 0,
-        totalCostPerDryTon: 0,
+        feedstockCostPerTon: 0,
         tripGeometries: [],
         radius,
         clusters: [],
@@ -226,7 +226,7 @@ export const processClustersForYear = async (
       results.transportationCostPerDryTon =
         results.totalTransportationCost / results.totalDryFeedstock;
       results.moveInCostPerDryTon = results.totalMoveInCost / results.totalDryFeedstock;
-      results.totalCostPerDryTon =
+      results.feedstockCostPerTon =
         results.harvestCostPerDryTon +
         results.transportationCostPerDryTon +
         results.moveInCostPerDryTon;
