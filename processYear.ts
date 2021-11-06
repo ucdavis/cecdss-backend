@@ -94,8 +94,11 @@ export const processClustersForYear = async (
       const TONNE_TO_TON = 1.10231; // 1 metric ton = 1.10231 short tons
       biomassTarget = biomassTarget * TONNE_TO_TON;
 
+      const moistureContentPercentage = params.moistureContent / 100.0;
+
       /*** feedstock searching algorithm ***/
       // get the clusters whose total feedstock amount is just greater than biomassTarget
+      // totalFeedstock and biomassTarget are both in short tons
       // for each cluster, run frcs and transportation model
       while (results.totalFeedstock < biomassTarget) {
         if (
@@ -107,6 +110,8 @@ export const processClustersForYear = async (
           console.log('radius large & not enough biomass');
           break;
         }
+
+        console.log();
 
         results.radius += 1000;
         console.log(
@@ -123,9 +128,9 @@ export const processClustersForYear = async (
           results.radius
         );
         console.log(`year:${year} clusters found: ${clusters.length}`);
-        console.log(`year:${year} sorting clusters...`);
 
         // process clusters
+        console.log(`year:${year} processing clusters...`);
         const harvestableClusters: ProcessedTreatedCluster[] = await processClusters(
           osrm,
           params,
@@ -134,6 +139,7 @@ export const processClustersForYear = async (
           errorIds
         );
 
+        console.log(`year:${year} sorting clusters by unit feedstock cost...`);
         const sortedClusters = harvestableClusters.sort(
           (a, b) =>
             (a.feedstockHarvestCost + a.transportationCost) / a.feedstock -
@@ -142,7 +148,13 @@ export const processClustersForYear = async (
 
         console.log(`year:${year} selecting clusters...`);
         await selectClusters(biomassTarget, sortedClusters, results, lcaTotals, usedIds);
-      }
+
+        const feedstockCost =
+          (results.totalHarvestCost + results.totalTransportationCost) /
+          ((results.totalFeedstock * (1 - moistureContentPercentage)) / TONNE_TO_TON);
+        console.log(`feedstock cost = ${feedstockCost}/metric ton`);
+      } // end of the while loop
+
       results.numberOfClusters = results.clusterNumbers.length;
       console.log(
         `annualGeneration: ${params.annualGeneration}, radius: ${results.radius}, # of clusters: ${results.numberOfClusters}`
@@ -204,7 +216,6 @@ export const processClustersForYear = async (
       const lca = await runLca(lcaInputs);
       results.lcaResults = lca;
 
-      const moistureContentPercentage = params.moistureContent / 100.0;
       // calculate dry values ($ / dry metric ton)
       results.totalDryFeedstock =
         (results.totalFeedstock * (1 - moistureContentPercentage)) / TONNE_TO_TON;
@@ -402,11 +413,11 @@ const selectClusters = async (
 
         results.clusters.push({
           cluster_no: cluster.cluster_no,
-          area: cluster.area,
-          biomass: cluster.feedstock,
-          distance: cluster.distance,
-          combinedCost: cluster.feedstockHarvestCost + cluster.coproductHarvestCost,
-          residueCost: cluster.feedstockHarvestCost,
+          area: cluster.area, // acre
+          biomass: cluster.feedstock, // green tons
+          distance: cluster.distance, // km
+          combinedCost: cluster.feedstockHarvestCost + cluster.coproductHarvestCost, // total harvest cost ($)
+          residueCost: cluster.feedstockHarvestCost, // feedstock harvest cost ($)
           transportationCost: cluster.transportationCost,
           frcsResult: cluster.frcsResult,
           center_lat: cluster.center_lat,
