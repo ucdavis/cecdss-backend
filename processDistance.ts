@@ -12,6 +12,7 @@ import {
   genericPowerOnly,
 } from '@ucdavis/tea/utility';
 import geocluster from 'geocluster';
+import { getDistance } from 'geolib';
 import Knex from 'knex';
 import OSRM from 'osrm';
 import { performance } from 'perf_hooks';
@@ -216,7 +217,18 @@ const calculateMoveInDistance = async (
       `${results.clusters.length} is too many clusters, breaking into ${numChunks} chunks`
     );
 
-    const sortedClusters = results.clusters.sort((a, b) => a.distance - b.distance);
+    // assuming facility coordinates are biomass coordinates
+    const sortedClusters = results.clusters.sort(
+      (a, b) =>
+        getDistance(
+          { latitude: params.facilityLat, longitude: params.facilityLng },
+          { latitude: a.center_lat, longitude: a.center_lng }
+        ) -
+        getDistance(
+          { latitude: params.facilityLat, longitude: params.facilityLng },
+          { latitude: b.center_lat, longitude: b.center_lng }
+        )
+    );
 
     // break up into numChunks chunks by taking clusters in order
     const groupedClusters = sortedClusters.reduce((resultArray, item, index) => {
