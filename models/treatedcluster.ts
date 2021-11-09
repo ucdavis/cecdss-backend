@@ -12,7 +12,7 @@ export interface TreatedCluster {
   mean_yarding: number;
   site_class: number;
   forest_type: string;
-  county: string;
+  county_name: string;
   land_use: string;
   haz_class: number;
 
