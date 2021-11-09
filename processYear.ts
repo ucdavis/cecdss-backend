@@ -428,7 +428,7 @@ const selectClusters = async (
             { latitude: cluster.landing_lat, longitude: cluster.landing_lng },
             { latitude: cluster.center_lat, longitude: cluster.center_lng }
           ),
-          county: cluster.county,
+          county: cluster.county_name,
           land_use: cluster.land_use,
           haz_class: cluster.haz_class,
           forest_type: cluster.forest_type,
