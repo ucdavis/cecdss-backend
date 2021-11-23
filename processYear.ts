@@ -317,15 +317,21 @@ const processClusters = async (
 ) => {
   return new Promise<ProcessedTreatedCluster[]>(async (res, rej) => {
     const t0 = performance.now();
+    const frcsTimings = [];
+    const osrmRouteTimings = [];
     const harvestableClusters: ProcessedTreatedCluster[] = [];
     for (const cluster of clusters) {
       try {
+        const t0_frcs = performance.now();
         const frcsResult: OutputVarMod = await runFrcsOnCluster(
           cluster,
           params.system,
           params.dieselFuelPrice,
           params.moistureContent
         );
+        const t1_frcs = performance.now();
+        frcsTimings.push(t1_frcs - t0_frcs);
+
         const clusterFeedstock = frcsResult.Residue.WeightPerAcre * cluster.area; // green tons
         const clusterCoproduct =
           (frcsResult.Total.WeightPerAcre - frcsResult.Residue.WeightPerAcre) * cluster.area; // green tons
@@ -333,6 +339,7 @@ const processClusters = async (
           throw new Error(`Cluster biomass was: ${clusterFeedstock}, which is too low to use`);
         }
 
+        const t0_osrm = performance.now();
         const routeOptions: OSRM.RouteOptions = {
           coordinates: [
             [params.facilityLng, params.facilityLat],
@@ -353,6 +360,8 @@ const processClusters = async (
           duration,
           params.dieselFuelPrice
         );
+        const t1_osrm = performance.now();
+        osrmRouteTimings.push(t1_osrm - t0_osrm);
 
         cluster.feedstock = clusterFeedstock;
         cluster.feedstockHarvestCost = frcsResult.Residue.CostPerAcre * cluster.area;
@@ -380,6 +389,17 @@ const processClusters = async (
         errorIds.push(cluster.cluster_no);
       }
     }
+
+    // average cluster processing metrics
+    trackMetric(
+      `frcs for ${clusters.length}`,
+      frcsTimings.reduce((a, b) => a + b, 0) / frcsTimings.length
+    );
+
+    trackMetric(
+      `osrm route calculations for ${clusters.length}`,
+      osrmRouteTimings.reduce((a, b) => a + b, 0) / osrmRouteTimings.length
+    );
 
     // keep track of how long it takes to process all clusters
     const t1 = performance.now();

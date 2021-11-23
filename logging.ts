@@ -18,5 +18,9 @@ export const setupAppInsights = () => {
 };
 
 export const trackMetric = (name: string, value: number) => {
-  appInsightsClient.trackMetric({ name, value });
+  if (appInsightsClient) {
+    appInsightsClient.trackMetric({ name, value });
+  } else {
+    console.log(`${name}: ${value}`);
+  }
 };
