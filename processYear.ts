@@ -111,8 +111,6 @@ export const processClustersForYear = async (
           break;
         }
 
-        console.log();
-
         results.radius += 1000;
         console.log(
           `year:${year} getting clusters from db, radius: ${results.radius}, totalBiomass: ${
@@ -200,7 +198,6 @@ export const processClustersForYear = async (
       results.totalMoveInCost = moveInCosts.Residue;
 
       /*** run LCA ***/
-      console.log(lcaTotals);
       const lcaInputs: RunParams = {
         technology: params.teaModel,
         diesel: lcaTotals.totalDiesel / params.annualGeneration, // gal/kWh
@@ -209,10 +206,6 @@ export const processClustersForYear = async (
         distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration, // miles/kWh
       };
       console.log('running LCA...');
-      console.log('lcaInputs:');
-      console.log(lcaInputs);
-      console.log('lcaTotals:');
-      console.log(lcaTotals);
       const lca = await runLca(lcaInputs);
       results.lcaResults = lca;
 
