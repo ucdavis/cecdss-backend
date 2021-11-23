@@ -27,6 +27,7 @@ import { processClustersByDistance } from './processDistance';
 import { getTeaOutputs, processClustersForYear, runLca } from './processYear';
 import { testRunFrcsOnCluster } from './runFrcs';
 import { getTransportationCostTotal, KM_TO_MILES } from './transportation';
+import { hookupKnexTiming } from './util';
 
 const PG_DECIMAL_OID = 1700;
 pg.types.setTypeParser(PG_DECIMAL_OID, parseFloat);
@@ -51,6 +52,10 @@ const db = knex({
     port: Number(process.env.DB_PORT),
   },
 });
+
+// reports query time for every db query
+hookupKnexTiming(db);
+
 console.log('connected to db. connected to osrm...');
 
 const osrm = new OSRM('./data/california-latest.osrm');
