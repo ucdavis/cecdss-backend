@@ -117,7 +117,6 @@ export const processClustersByDistance = async (
       results.totalMoveInCost = moveInCosts.Residue;
 
       results.numberOfClusters = results.clusterNumbers.length;
-      console.log(lcaTotals);
 
       const lcaInputs: RunParams = {
         technology: params.teaModel,
@@ -126,14 +125,7 @@ export const processClustersByDistance = async (
         jetfuel: lcaTotals.totalJetFuel / params.annualGeneration, // gal/MWh
         distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration, // km/MWh
       };
-      console.log('running LCA...');
-      console.log('lcaInputs:');
-      console.log(lcaInputs);
-      console.log('lcaTotals:');
-      console.log(lcaTotals);
-      console.log(
-        `annualGeneration: ${params.annualGeneration}, radius: ${results.radius}, # of clusters: ${results.numberOfClusters}`
-      );
+
       const lca = await runLca(lcaInputs);
       results.lcaResults = lca;
 

@@ -149,13 +149,6 @@ app.post('/initialProcessing', async (req, res) => {
   res.status(200).json(results);
 });
 
-// app.post('/postProcessing', async(req, res) => {
-//   console.log('running post processing...')
-//   const params: RequestParamsAllYearsPost = req.body;
-
-//   res.status(200).json(results);
-// })
-
 app.post('/runLCA', async (req, res) => {
   const params: RunParams = req.body;
   const lca: LCAresults = await runLca(params);
@@ -187,7 +180,6 @@ app.post('/process', async (req, res) => {
     params.errorIds
   );
   console.log(`year: ${params.year}, # of clusters: ${yearResult.clusterNumbers.length}`);
-  // console.log(yearResult);
 
   const t1 = performance.now();
   console.log(`Running took ${t1 - t0} milliseconds.`);
