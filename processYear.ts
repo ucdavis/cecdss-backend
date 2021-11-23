@@ -12,7 +12,7 @@ import {
   genericPowerOnly,
 } from '@ucdavis/tea/utility';
 import { getBoundsOfDistance, getDistance } from 'geolib';
-import Knex from 'knex';
+import { Knex } from 'knex';
 import OSRM from 'osrm';
 import { performance } from 'perf_hooks';
 import { LCAresults } from './models/lcaModels';
@@ -265,7 +265,7 @@ export const processClustersForYear = async (
       results.errorGeoJson = errorGeoJson;
 
       resolve(results);
-    } catch (e) {
+    } catch (e: any) {
       console.log('ERROR!');
       console.log(e);
       reject(e.message);
@@ -363,7 +363,7 @@ const processClusters = async (
         cluster.distance = distance;
         cluster.transportationDistance = distance * 2 * numberOfTripsForTransportation;
         harvestableClusters.push(cluster);
-      } catch (err) {
+      } catch (err: any) {
         // swallow errors frcs throws and push the error message instead
         results.errorClusters.push({
           cluster_no: cluster.cluster_no,

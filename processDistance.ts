@@ -13,7 +13,7 @@ import {
 } from '@ucdavis/tea/utility';
 import geocluster from 'geocluster';
 import { getDistance } from 'geolib';
-import Knex from 'knex';
+import { Knex } from 'knex';
 import OSRM from 'osrm';
 import { performance } from 'perf_hooks';
 import { LCAresults } from './models/lcaModels';
@@ -179,7 +179,7 @@ export const processClustersByDistance = async (
       results.cashFlow = cashFlow;
 
       resolve(results);
-    } catch (e) {
+    } catch (e: any) {
       console.log('ERROR!');
       console.log(e);
       reject(e.message);
@@ -388,7 +388,7 @@ const selectClusters = async (
         });
         results.clusterNumbers.push(cluster.cluster_no);
         usedIds.push(cluster.cluster_no);
-      } catch (err) {
+      } catch (err: any) {
         // swallow errors frcs throws and push the error message instead
         results.errorClusters.push({
           cluster_no: cluster.cluster_no,
