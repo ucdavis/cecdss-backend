@@ -1,7 +1,3 @@
-// load analytics framework first
-// tslint:disable-next-line:no-var-requires
-const appInsights = require('applicationinsights');
-
 import { RunParams } from '@ucdavis/lca/out/lca.model';
 import { OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/output.model';
 import { transmission } from '@ucdavis/tea/utility';
@@ -17,6 +13,7 @@ import { performance } from 'perf_hooks';
 import pg from 'pg';
 import { getFrcsInputsTest } from './frcsInputCalculations';
 import { LCAresults } from './models/lcaModels';
+import { setupAppInsights, trackEvent } from './logging';
 import { TreatedCluster } from './models/treatedcluster';
 import {
   AllYearsResults,
@@ -37,13 +34,7 @@ const PG_DECIMAL_OID = 1700;
 pg.types.setTypeParser(PG_DECIMAL_OID, parseFloat);
 dotenv.config();
 
-appInsights
-  .setup()
-  .setAutoCollectDependencies(true) // include postgres
-  .start();
-
-// if we want to also collect calls to console.log()
-// setAutoCollectConsole(true, true).
+setupAppInsights();
 
 const app = express();
 
@@ -200,6 +191,8 @@ app.post('/process', async (req, res) => {
 
   const t1 = performance.now();
   console.log(`Running took ${t1 - t0} milliseconds.`);
+
+  trackEvent(`Process method ${params.year} - biomass target ${params.biomassTarget}`, t1 - t0);
 
   res.status(200).json(yearResult);
 });
