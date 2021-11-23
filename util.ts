@@ -1,8 +1,8 @@
 import { Knex } from 'knex';
 import { performance } from 'perf_hooks';
 
-/* 
-   utilities for timing queries 
+/*
+   utilities for timing queries
    Taken from https://spin.atomicobject.com/2017/03/27/timing-queries-knexjs-nodejs/
 */
 
