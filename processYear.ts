@@ -13,6 +13,7 @@ import {
 } from '@ucdavis/tea/utility';
 import { getBoundsOfDistance, getDistance } from 'geolib';
 import { Knex } from 'knex';
+import { trackMetric } from 'logging';
 import OSRM from 'osrm';
 import { performance } from 'perf_hooks';
 import { LCAresults } from './models/lcaModels';
@@ -171,6 +172,8 @@ export const processClustersForYear = async (
         `Running took ${t1 - t0} milliseconds, move in distance: ${moveInTripResults.distance}.`
       );
 
+      trackMetric(`moveInDistance for ${results.clusters.length} clusters`, t1 - t0);
+
       results.tripGeometries = moveInTripResults.trips.map((t) => t.geometry);
 
       /*** move-in cost calculation ***/
@@ -313,6 +316,7 @@ const processClusters = async (
   errorIds: string[]
 ) => {
   return new Promise<ProcessedTreatedCluster[]>(async (res, rej) => {
+    const t0 = performance.now();
     const harvestableClusters: ProcessedTreatedCluster[] = [];
     for (const cluster of clusters) {
       try {
@@ -376,6 +380,14 @@ const processClusters = async (
         errorIds.push(cluster.cluster_no);
       }
     }
+
+    // keep track of how long it takes to process all clusters
+    const t1 = performance.now();
+    trackMetric(
+      `processClusters for ${clusters.length}. ${results.clusters.length} processed, ${results.errorClusters.length} errors`,
+      t1 - t0
+    );
+
     res(harvestableClusters);
   });
 };

@@ -17,6 +17,6 @@ export const setupAppInsights = () => {
   appInsightsClient = appInsights.defaultClient;
 };
 
-export const trackEvent = (name: string, value: number) => {
+export const trackMetric = (name: string, value: number) => {
   appInsightsClient.trackMetric({ name, value });
 };

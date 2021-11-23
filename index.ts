@@ -12,8 +12,8 @@ import OSRM from 'osrm';
 import { performance } from 'perf_hooks';
 import pg from 'pg';
 import { getFrcsInputsTest } from './frcsInputCalculations';
+import { setupAppInsights, trackMetric } from './logging';
 import { LCAresults } from './models/lcaModels';
-import { setupAppInsights, trackEvent } from './logging';
 import { TreatedCluster } from './models/treatedcluster';
 import {
   AllYearsResults,
@@ -192,7 +192,7 @@ app.post('/process', async (req, res) => {
   const t1 = performance.now();
   console.log(`Running took ${t1 - t0} milliseconds.`);
 
-  trackEvent(`Process method ${params.year} - biomass target ${params.biomassTarget}`, t1 - t0);
+  trackMetric(`Process method ${params.year} - biomass target ${params.biomassTarget}`, t1 - t0);
 
   res.status(200).json(yearResult);
 });
