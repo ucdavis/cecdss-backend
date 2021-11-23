@@ -34,7 +34,9 @@ const PG_DECIMAL_OID = 1700;
 pg.types.setTypeParser(PG_DECIMAL_OID, parseFloat);
 dotenv.config();
 
-setupAppInsights();
+if (process.env.APPINSIGHTS_INSTRUMENTATIONKEY) {
+  setupAppInsights();
+}
 
 const app = express();
 

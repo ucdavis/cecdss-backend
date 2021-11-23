@@ -13,9 +13,9 @@ import {
 } from '@ucdavis/tea/utility';
 import { getBoundsOfDistance, getDistance } from 'geolib';
 import { Knex } from 'knex';
-import { trackMetric } from 'logging';
 import OSRM from 'osrm';
 import { performance } from 'perf_hooks';
+import { trackMetric } from './logging';
 import { LCAresults } from './models/lcaModels';
 import { ProcessedTreatedCluster } from './models/ProcessedTreatedCluster';
 import {
