@@ -27,7 +27,7 @@
     "express": "^4.17.1",
     "geocluster": "^0.1.1",
     "geolib": "^3.3.3",
-    "isomorphic-fetch": "^2.2.1",
+    "isomorphic-fetch": "^3.0.0",
     "knex": "^0.95.14",
     "osrm": "5.25.0",
     "pg": "^8.7.1"
