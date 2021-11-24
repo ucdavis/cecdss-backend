@@ -166,6 +166,8 @@ app.post('/runLCA', async (req, res) => {
 });
 
 app.post('/process', async (req, res) => {
+  req.setTimeout(60 * 5 * 1000); // 5 minutes to timeout, extending the default of 2 minutes
+
   const t0 = performance.now();
   const params: RequestParams = req.body;
 
