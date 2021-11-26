@@ -14,7 +14,7 @@ export const getTransportationCostTotal = (
   feedstockAmount: number,
   distance: number,
   duration: number,
-  dieselFuelPrice: number,
+  dieselFuelPrice: number
 ) => {
   let transportationCostFullPayloadPerGT = 0;
   if (feedstockAmount >= FULL_TRUCK_PAYLOAD) {
@@ -70,7 +70,7 @@ export const getTransportationCostPerGT = (
 
   let cost = OIL_ETC_COST * miles + fuel + labor;
 
-  cost = cost / payload + 1.11; // add $1.11 fixed cost to avoid unrealistic cost when distance is small
+  cost = cost / payload;
 
   return cost;
 };
