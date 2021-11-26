@@ -101,7 +101,7 @@ export const processClustersForYear = async (
       // get the clusters whose total feedstock amount is just greater than biomassTarget
       // totalFeedstock and biomassTarget are both in short tons
       // for each cluster, run frcs and transportation model
-      while (results.totalFeedstock < biomassTarget) {
+      while (results.totalFeedstock < biomassTarget * 5) {
         if (
           // TODO: might need a better terminating condition
           results.radius > 40000 &&
@@ -112,7 +112,7 @@ export const processClustersForYear = async (
           break;
         }
 
-        results.radius += 1000;
+        results.radius += 5000;
         console.log(
           `year:${year} getting clusters from db, radius: ${results.radius}, totalBiomass: ${
             results.totalFeedstock
