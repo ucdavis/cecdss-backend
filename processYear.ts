@@ -317,89 +317,17 @@ const processClusters = async (
 ) => {
   return new Promise<ProcessedTreatedCluster[]>(async (res, rej) => {
     const t0 = performance.now();
-    const frcsTimings = [];
-    const osrmRouteTimings = [];
     const harvestableClusters: ProcessedTreatedCluster[] = [];
+
+    const processPromises = [];
     for (const cluster of clusters) {
-      try {
-        const t0_frcs = performance.now();
-        const frcsResult: OutputVarMod = await runFrcsOnCluster(
-          cluster,
-          params.system,
-          params.dieselFuelPrice,
-          params.moistureContent
-        );
-        const t1_frcs = performance.now();
-        frcsTimings.push(t1_frcs - t0_frcs);
-
-        const clusterFeedstock = frcsResult.Residue.WeightPerAcre * cluster.area; // green tons
-        const clusterCoproduct =
-          (frcsResult.Total.WeightPerAcre - frcsResult.Residue.WeightPerAcre) * cluster.area; // green tons
-        if (clusterFeedstock < 1) {
-          throw new Error(`Cluster biomass was: ${clusterFeedstock}, which is too low to use`);
-        }
-
-        const t0_osrm = performance.now();
-        const routeOptions: OSRM.RouteOptions = {
-          coordinates: [
-            [params.facilityLng, params.facilityLat],
-            [cluster.landing_lng, cluster.landing_lat],
-          ],
-          annotations: ['duration', 'distance'],
-        };
-        // currently distance is the osrm generated distance between each landing site and the facility location
-        const route: any = await getRouteDistanceAndDuration(osrm, routeOptions);
-        // number of trips is how many truckloads it takes to transport biomass
-        const numberOfTripsForTransportation = Math.ceil(clusterFeedstock / FULL_TRUCK_PAYLOAD);
-        // multiply the osrm road distance by number of trips, transportation eq doubles it for round trip
-        const distance = route.distance / 1000; // m to km
-        const duration = route.duration / 3600; // seconds to hours
-        const transportationCostTotal = getTransportationCostTotal(
-          clusterFeedstock,
-          distance,
-          duration,
-          params.dieselFuelPrice
-        );
-        const t1_osrm = performance.now();
-        osrmRouteTimings.push(t1_osrm - t0_osrm);
-
-        cluster.feedstock = clusterFeedstock;
-        cluster.feedstockHarvestCost = frcsResult.Residue.CostPerAcre * cluster.area;
-        cluster.coproduct = clusterCoproduct;
-        cluster.coproductHarvestCost =
-          (frcsResult.Total.CostPerAcre - frcsResult.Residue.CostPerAcre) * cluster.area;
-        cluster.frcsResult = frcsResult;
-        cluster.transportationCost = transportationCostTotal;
-        cluster.diesel = frcsResult.Residue.DieselPerAcre * cluster.area;
-        cluster.gasoline = frcsResult.Residue.GasolinePerAcre * cluster.area;
-        cluster.juetFuel = frcsResult.Residue.JetFuelPerAcre * cluster.area;
-        cluster.distance = distance;
-        cluster.transportationDistance = distance * 2 * numberOfTripsForTransportation;
-        harvestableClusters.push(cluster);
-      } catch (err: any) {
-        // swallow errors frcs throws and push the error message instead
-        results.errorClusters.push({
-          cluster_no: cluster.cluster_no,
-          area: cluster.area,
-          biomass: 0,
-          error: err.message,
-          slope: cluster.slope,
-        });
-        results.errorClusterNumbers.push(cluster.cluster_no);
-        errorIds.push(cluster.cluster_no);
-      }
+      processPromises.push(
+        processCluster(cluster, params, osrm, results, harvestableClusters, errorIds)
+      );
     }
 
-    // average cluster processing metrics
-    trackMetric(
-      `frcs for ${clusters.length}`,
-      frcsTimings.reduce((a, b) => a + b, 0) / frcsTimings.length
-    );
-
-    trackMetric(
-      `osrm route calculations for ${clusters.length}`,
-      osrmRouteTimings.reduce((a, b) => a + b, 0) / osrmRouteTimings.length
-    );
+    // process all clusters in parallel
+    await Promise.all(processPromises);
 
     // keep track of how long it takes to process all clusters
     const t1 = performance.now();
@@ -410,6 +338,77 @@ const processClusters = async (
 
     res(harvestableClusters);
   });
+};
+
+const processCluster = async (
+  cluster: ProcessedTreatedCluster,
+  params: RequestParams,
+  osrm: OSRM,
+  results: YearlyResult,
+  harvestableClusters: ProcessedTreatedCluster[],
+  errorIds: string[]
+) => {
+  try {
+    const frcsResult: OutputVarMod = await runFrcsOnCluster(
+      cluster,
+      params.system,
+      params.dieselFuelPrice,
+      params.moistureContent
+    );
+
+    const clusterFeedstock = frcsResult.Residue.WeightPerAcre * cluster.area; // green tons
+    const clusterCoproduct =
+      (frcsResult.Total.WeightPerAcre - frcsResult.Residue.WeightPerAcre) * cluster.area; // green tons
+    if (clusterFeedstock < 1) {
+      throw new Error(`Cluster biomass was: ${clusterFeedstock}, which is too low to use`);
+    }
+
+    const routeOptions: OSRM.RouteOptions = {
+      coordinates: [
+        [params.facilityLng, params.facilityLat],
+        [cluster.landing_lng, cluster.landing_lat],
+      ],
+      annotations: ['duration', 'distance'],
+    };
+    // currently distance is the osrm generated distance between each landing site and the facility location
+    const route: any = await getRouteDistanceAndDuration(osrm, routeOptions);
+    // number of trips is how many truckloads it takes to transport biomass
+    const numberOfTripsForTransportation = Math.ceil(clusterFeedstock / FULL_TRUCK_PAYLOAD);
+    // multiply the osrm road distance by number of trips, transportation eq doubles it for round trip
+    const distance = route.distance / 1000; // m to km
+    const duration = route.duration / 3600; // seconds to hours
+    const transportationCostTotal = getTransportationCostTotal(
+      clusterFeedstock,
+      distance,
+      duration,
+      params.dieselFuelPrice
+    );
+
+    cluster.feedstock = clusterFeedstock;
+    cluster.feedstockHarvestCost = frcsResult.Residue.CostPerAcre * cluster.area;
+    cluster.coproduct = clusterCoproduct;
+    cluster.coproductHarvestCost =
+      (frcsResult.Total.CostPerAcre - frcsResult.Residue.CostPerAcre) * cluster.area;
+    cluster.frcsResult = frcsResult;
+    cluster.transportationCost = transportationCostTotal;
+    cluster.diesel = frcsResult.Residue.DieselPerAcre * cluster.area;
+    cluster.gasoline = frcsResult.Residue.GasolinePerAcre * cluster.area;
+    cluster.juetFuel = frcsResult.Residue.JetFuelPerAcre * cluster.area;
+    cluster.distance = distance;
+    cluster.transportationDistance = distance * 2 * numberOfTripsForTransportation;
+    harvestableClusters.push(cluster);
+  } catch (err: any) {
+    // swallow errors frcs throws and push the error message instead
+    results.errorClusters.push({
+      cluster_no: cluster.cluster_no,
+      area: cluster.area,
+      biomass: 0,
+      error: err.message,
+      slope: cluster.slope,
+    });
+    results.errorClusterNumbers.push(cluster.cluster_no);
+    errorIds.push(cluster.cluster_no);
+  }
 };
 
 const selectClusters = async (
