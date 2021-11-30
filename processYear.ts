@@ -95,7 +95,8 @@ export const processClustersForYear = async (
       // we want the units to be consistent in order to compare them later so convert biomassTarget to short tons
       const TONNE_TO_TON = 1.10231; // 1 metric ton = 1.10231 short tons
       biomassTarget = biomassTarget * TONNE_TO_TON;
-      const extraBiomassTarget = biomassTarget * 2; // doubling the original biomass target for now
+      const expansionFactor = 3;
+      const extraBiomassTarget = biomassTarget * expansionFactor; // doubling the original biomass target for now
 
       const moistureContentPercentage = params.moistureContent / 100.0;
       const harvestableClusters: ProcessedTreatedCluster[] = [];
