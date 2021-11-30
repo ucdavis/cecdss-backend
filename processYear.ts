@@ -95,19 +95,21 @@ export const processClustersForYear = async (
       // we want the units to be consistent in order to compare them later so convert biomassTarget to short tons
       const TONNE_TO_TON = 1.10231; // 1 metric ton = 1.10231 short tons
       biomassTarget = biomassTarget * TONNE_TO_TON;
+      const extraBiomassTarget = biomassTarget * 2; // doubling the original biomass target for now
 
       const moistureContentPercentage = params.moistureContent / 100.0;
+      const harvestableClusters: ProcessedTreatedCluster[] = [];
 
       /*** feedstock searching algorithm ***/
-      // get the clusters whose total feedstock amount is just greater than biomassTarget
-      // totalFeedstock and biomassTarget are both in short tons
+      // get the candidate clusters whose total feedstock amount is just greater than extraBiomassTarget
+      // feedstock and biomassTarget are both in short tons
       // for each cluster, run frcs and transportation model
-      while (results.candidateTotalFeedstock < biomassTarget * 2) {
+      while (results.candidateTotalFeedstock < extraBiomassTarget) {
         if (
           // TODO: might need a better terminating condition
           results.radius > 40000 &&
           results.clusters.length > 3800 &&
-          results.totalFeedstock / biomassTarget < 0.1
+          results.candidateTotalFeedstock / biomassTarget < 0.1
         ) {
           console.log('radius large & not enough biomass');
           break;
@@ -115,10 +117,16 @@ export const processClustersForYear = async (
 
         results.radius += 1000;
         console.log(
-          `year:${year} getting clusters from db, radius: ${results.radius}, totalBiomass: ${
-            results.totalFeedstock
-          }, biomassTarget: ${biomassTarget}, ${results.totalFeedstock < biomassTarget} ...`
+          `year:${year} getting clusters from db, radius: ${
+            results.radius
+          }, candidateTotalFeedstock: ${
+            results.candidateTotalFeedstock
+          }, extraBiomassTarget: ${extraBiomassTarget}, ${
+            results.candidateTotalFeedstock < extraBiomassTarget
+          } ...`
         );
+
+        // get the clusters within the radius from the database, excluding used and error cluters
         const clusters: ProcessedTreatedCluster[] = await getClusters(
           db,
           params,
@@ -129,31 +137,23 @@ export const processClustersForYear = async (
         );
         console.log(`year:${year} clusters found: ${clusters.length}`);
 
-        // process clusters
+        // process clusters to compute feedstock amount, harvest cost, transport cost, etc.for each cluster
+        // add harvestable clusters to harvestableClusters
+        // add Id of non-harvestable clusters to errorIds
         console.log(`year:${year} processing clusters...`);
-        const harvestableClusters: ProcessedTreatedCluster[] = await processClusters(
-          osrm,
-          params,
-          clusters,
-          results,
-          errorIds
-        );
-
-        console.log(`year:${year} sorting clusters by unit feedstock cost...`);
-        const sortedClusters = harvestableClusters.sort(
-          (a, b) =>
-            (a.feedstockHarvestCost + a.transportationCost) / a.feedstock -
-            (b.feedstockHarvestCost + b.transportationCost) / b.feedstock
-        );
-
-        console.log(`year:${year} selecting clusters...`);
-        await selectClusters(biomassTarget, sortedClusters, results, lcaTotals, usedIds);
-
-        const feedstockCost =
-          (results.totalHarvestCost + results.totalTransportationCost) /
-          ((results.totalFeedstock * (1 - moistureContentPercentage)) / TONNE_TO_TON);
-        console.log(`feedstock cost = ${feedstockCost}/metric ton`);
+        await processClusters(osrm, params, clusters, results, errorIds, harvestableClusters);
       } // end of the while loop
+
+      console.log(`year:${year} sorting candidate clusters by unit feedstock cost...`);
+      const sortedClusters = harvestableClusters.sort(
+        (a, b) =>
+          (a.feedstockHarvestCost + a.transportationCost) / a.feedstock -
+          (b.feedstockHarvestCost + b.transportationCost) / b.feedstock
+      );
+
+      // select from the sorted harvestable clusters the ones that can supply one-year feedstock (biomassTarget)
+      console.log(`year:${year} selecting clusters...`);
+      await selectClusters(biomassTarget, sortedClusters, results, lcaTotals, usedIds);
 
       results.numberOfClusters = results.clusterNumbers.length;
       console.log(
@@ -314,11 +314,11 @@ const processClusters = async (
   params: RequestParams,
   clusters: ProcessedTreatedCluster[],
   results: YearlyResult,
-  errorIds: string[]
+  errorIds: string[],
+  harvestableClusters: ProcessedTreatedCluster[]
 ) => {
-  return new Promise<ProcessedTreatedCluster[]>(async (res, rej) => {
+  return new Promise<void>(async (res, rej) => {
     const t0 = performance.now();
-    const harvestableClusters: ProcessedTreatedCluster[] = [];
 
     const processPromises = [];
     for (const cluster of clusters) {
@@ -337,7 +337,7 @@ const processClusters = async (
       t1 - t0
     );
 
-    res(harvestableClusters);
+    res();
   });
 };
 
