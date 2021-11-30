@@ -133,6 +133,7 @@ export interface YearlyResult {
   year: number;
   lcaResults?: LCAresults;
   totalArea: number;
+  candidateTotalFeedstock: number;
   totalFeedstock: number; // total biomass from frcs residue output
   totalDryFeedstock: number; // feedstock multipled by (1-moistureContent)
   totalHarvestCost: number; // cost of harvesting residue biomass from frcs

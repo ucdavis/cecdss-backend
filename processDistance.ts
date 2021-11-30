@@ -42,6 +42,7 @@ export const processClustersByDistance = async (
         clusterNumbers: [],
         numberOfClusters: 0,
         totalArea: 0,
+        candidateTotalFeedstock: 0,
         totalFeedstock: 0,
         totalDryFeedstock: 0,
         totalHarvestCost: 0,
