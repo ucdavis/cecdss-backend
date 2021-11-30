@@ -1,0 +1,123 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "This service takes facility and biomass location information, along with various configuration parameters, and determines the opimal cluster locations for harvesting.  See https://github.com/ucdavis/cecdss-backend for more details.",
+    "version": "1.0.0",
+    "title": "CECDSS-Backend API",
+    "contact": {
+      "email": "srkirkland@ucdavis.edu"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://github.com/ucdavis/cecdss-backend/blob/master/LICENSE"
+    }
+  },
+  "host": "cecdss-backend.azurewebsites.net",
+  "basePath": "/",
+  "schemes": ["https"],
+  "paths": {
+    "/initialProcessing": {
+      "post": {
+        "tags": ["main"],
+        "summary": "determines transmissions and techno-economic results across all years",
+        "description": "Used for initial processing of data before calling /process for individual year\n",
+        "operationId": "initialProcessing",
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "params",
+            "description": "pass an optional search string for looking up inventory",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/RequestParamsAllYears"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success",
+            "schema": {
+              "$ref": "#/definitions/AllYearsResults"
+            }
+          },
+          "400": {
+            "description": "bad input parameter"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "RequestParamsAllYears": {
+      "type": "object",
+      "required": ["facilityLat", "facilityLng", "teaInputs", "teaModel", "transmission"],
+      "properties": {
+        "facilityLat": {
+          "type": "number",
+          "title": "RequestParamsAllYears.facilityLat"
+        },
+        "facilityLng": {
+          "type": "number",
+          "title": "RequestParamsAllYears.facilityLng"
+        },
+        "transmission": {
+          "type": "object",
+          "title": "RequestParamsAllYears.transmission",
+          "properties": {}
+        },
+        "teaModel": {
+          "type": "string",
+          "title": "RequestParamsAllYears.teaModel"
+        },
+        "teaInputs": {
+          "type": "object",
+          "title": "RequestParamsAllYears.teaInputs",
+          "properties": {}
+        }
+      },
+      "title": "RequestParamsAllYears",
+      "additionalProperties": {}
+    },
+    "AllYearsResults": {
+      "type": "object",
+      "required": [
+        "annualGeneration",
+        "biomassTarget",
+        "distanceToNearestSubstation",
+        "nearestSubstation"
+      ],
+      "properties": {
+        "biomassTarget": {
+          "type": "number",
+          "title": "AllYearsResults.biomassTarget"
+        },
+        "annualGeneration": {
+          "type": "number",
+          "title": "AllYearsResults.annualGeneration"
+        },
+        "teaResults": {
+          "type": "object",
+          "title": "AllYearsResults.teaResults",
+          "properties": {}
+        },
+        "teaInputs": {
+          "title": "AllYearsResults.teaInputs"
+        },
+        "transmissionResults": {
+          "title": "AllYearsResults.transmissionResults"
+        },
+        "nearestSubstation": {
+          "type": "string",
+          "title": "AllYearsResults.nearestSubstation"
+        },
+        "distanceToNearestSubstation": {
+          "type": "number",
+          "title": "AllYearsResults.distanceToNearestSubstation"
+        }
+      },
+      "title": "AllYearsResults",
+      "additionalProperties": {}
+    }
+  }
+}

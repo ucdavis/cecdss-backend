@@ -11,6 +11,8 @@ import knex from 'knex';
 import OSRM from 'osrm';
 import { performance } from 'perf_hooks';
 import pg from 'pg';
+import swaggerUi from 'swagger-ui-express';
+
 import { getFrcsInputsTest } from './frcsInputCalculations';
 import { setupAppInsights, trackMetric } from './logging';
 import { LCAresults } from './models/lcaModels';
@@ -29,6 +31,9 @@ import { getTeaOutputs, processClustersForYear, runLca } from './processYear';
 import { testRunFrcsOnCluster } from './runFrcs';
 import { getTransportationCostTotal, KM_TO_MILES } from './transportation';
 import { hookupKnexTiming } from './util';
+
+// tslint:disable-next-line: no-var-requires
+const swaggerDocument = require('./swagger.json');
 
 const PG_DECIMAL_OID = 1700;
 pg.types.setTypeParser(PG_DECIMAL_OID, parseFloat);
@@ -286,6 +291,8 @@ app.post('/processRoutes', async (req, res) => {
 
 // tslint:disable-next-line: max-file-line-count
 app.listen(port, () => console.log(`Listening on port ${port}!`));
+
+app.use('/', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.post('/testCluster', async (req, res) => {
   console.log('pulling cluster from db...');
