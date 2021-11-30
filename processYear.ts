@@ -57,6 +57,7 @@ export const processClustersForYear = async (
         clusterNumbers: [],
         numberOfClusters: 0,
         totalArea: 0,
+        candidateTotalFeedstock: 0,
         totalFeedstock: 0,
         totalDryFeedstock: 0,
         totalHarvestCost: 0,
@@ -101,7 +102,7 @@ export const processClustersForYear = async (
       // get the clusters whose total feedstock amount is just greater than biomassTarget
       // totalFeedstock and biomassTarget are both in short tons
       // for each cluster, run frcs and transportation model
-      while (results.totalFeedstock < biomassTarget) {
+      while (results.candidateTotalFeedstock < biomassTarget * 2) {
         if (
           // TODO: might need a better terminating condition
           results.radius > 40000 &&
@@ -385,6 +386,7 @@ const processCluster = async (
     );
 
     cluster.feedstock = clusterFeedstock;
+    results.candidateTotalFeedstock += clusterFeedstock;
     cluster.feedstockHarvestCost = frcsResult.Residue.CostPerAcre * cluster.area;
     cluster.coproduct = clusterCoproduct;
     cluster.coproductHarvestCost =
