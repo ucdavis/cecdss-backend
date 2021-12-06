@@ -411,11 +411,10 @@ export const runLca = async (inputs: LcaInputs) => {
   results.inputs = inputs;
   // convert US units to SI units: gallon to liter, mile to km
   const GALLON_TO_LITER = 3.78541;
-  const MILE_TO_KM = 1.60934;
   results.inputs.diesel *= GALLON_TO_LITER; // L/kWh
   results.inputs.gasoline *= GALLON_TO_LITER; // L/kWh
   results.inputs.jetfuel *= GALLON_TO_LITER; // L/kWh
-  results.inputs.distance *= MILE_TO_KM; // km/kWh
+  results.inputs.distance /= KM_TO_MILES; // km/kWh
 
   return results;
 };
