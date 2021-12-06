@@ -1,7 +1,7 @@
 import { getMoveInCosts } from '@ucdavis/frcs';
 import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
-import { runLCA } from '@ucdavis/lca';
-import { RunParams } from '@ucdavis/lca/out/lca.model';
+import { lifeCycleAnalysis } from '@ucdavis/lca/function';
+import { LcaInputs } from '@ucdavis/lca/model';
 import { CashFlow, OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/output.model';
 import {
   computeCarbonCredit,
@@ -203,7 +203,7 @@ export const processClustersForYear = async (
       results.totalMoveInCost = moveInCosts.Residue;
 
       /*** run LCA ***/
-      const lcaInputs: RunParams = {
+      const lcaInputs: LcaInputs = {
         technology: params.teaModel,
         diesel: lcaTotals.totalDiesel / params.annualGeneration, // gal/kWh
         gasoline: lcaTotals.totalGasoline / params.annualGeneration, // gal/kWh
@@ -233,7 +233,7 @@ export const processClustersForYear = async (
       const cashFlow: CashFlow = params.cashFlow;
       cashFlow.BiomassFuelCost = // update annual feedstock (biomass fuel) cost
         results.totalHarvestCost + results.totalTransportationCost + results.totalMoveInCost;
-      const carbonIntensity = (lca.lciResults.CI * 1000) / 3.6; // convert from kg/kWh to g/MJ
+      const carbonIntensity = (lca.lifeCycleEmissions.CI * 1000) / 3.6; // convert from kg/kWh to g/MJ
       cashFlow.LcfsCreditRevenue = computeCarbonCredit(
         params.year,
         params.firstYear,
@@ -469,8 +469,8 @@ const selectClusters = async (
   });
 };
 
-export const runLca = async (inputs: RunParams) => {
-  const results: LCAresults = await runLCA(inputs);
+export const runLca = async (inputs: LcaInputs) => {
+  const results: LCAresults = await lifeCycleAnalysis(inputs);
   results.inputs = inputs;
   // convert US units to SI units: gallon to liter, mile to km
   const GALLON_TO_LITER = 3.78541;
