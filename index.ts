@@ -1,4 +1,4 @@
-import { RunParams } from '@ucdavis/lca/out/lca.model';
+import { LcaInputs } from '@ucdavis/lca/model';
 import { OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/output.model';
 import { transmission } from '@ucdavis/tea/utility';
 import bodyParser from 'body-parser';
@@ -165,7 +165,7 @@ app.post('/initialProcessing', async (req, res) => {
 });
 
 app.post('/runLCA', async (req, res) => {
-  const params: RunParams = req.body;
+  const params: LcaInputs = req.body;
   const lca: LCAresults = await runLca(params);
   res.status(200).json(lca);
 });
