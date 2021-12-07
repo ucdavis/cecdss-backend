@@ -210,8 +210,12 @@ export const processClustersForYear = async (
         jetfuel: lcaTotals.totalJetFuel / params.annualGeneration, // gal/kWh
         distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration, // miles/kWh
       };
+
+      console.log();
       console.log('running LCA...');
+      console.log('lcaInputs = ', lcaInputs);
       const lca = await runLca(lcaInputs);
+      console.log('lifeCycleEmissions = ', lca.lifeCycleEmissions);
       results.lcaResults = lca;
 
       // calculate dry values ($ / dry metric ton)
