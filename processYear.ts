@@ -211,7 +211,6 @@ export const processClustersForYear = async (
         distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration, // miles/kWh
       };
 
-      console.log();
       console.log('running LCA...');
       console.log('lcaInputs = ', lcaInputs);
       const lca = await runLca(lcaInputs);
