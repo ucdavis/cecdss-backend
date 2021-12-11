@@ -3,7 +3,7 @@ import {
   InputModCHP,
   InputModGP,
   InputModGPO,
-  InputModTransimission
+  InputModTransimission,
 } from '@ucdavis/tea/input.model';
 import {
   CashFlow,
@@ -11,7 +11,7 @@ import {
   CashFlowGP,
   OutputModCHP,
   OutputModGP,
-  OutputModGPO
+  OutputModGPO,
 } from '@ucdavis/tea/output.model';
 import OSRM from 'osrm';
 import { LCAresults } from './lcaModels';
@@ -45,6 +45,7 @@ export interface RequestParams {
   ppiCurrent: number;
   residueRecovFracWT: number;
   residueRecovFracCTL: number;
+  expansionFactor: number;
 }
 
 export interface RequestByDistanceParams {
