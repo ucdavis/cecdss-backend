@@ -1,5 +1,5 @@
 import { getMoveInCosts } from '@ucdavis/frcs';
-import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
+import { FrcsOutputs } from '@ucdavis/frcs/out/model';
 import { lifeCycleAnalysis } from '@ucdavis/lca/function';
 import { LcaInputs } from '@ucdavis/lca/model';
 import { CashFlow, OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/output.model';
@@ -95,8 +95,7 @@ export const processClustersForYear = async (
       // we want the units to be consistent in order to compare them later so convert biomassTarget to short tons
       const TONNE_TO_TON = 1.10231; // 1 metric ton = 1.10231 short tons
       biomassTarget = biomassTarget * TONNE_TO_TON;
-      const expansionFactor = 5;
-      const extraBiomassTarget = biomassTarget * expansionFactor;
+      const extraBiomassTarget = biomassTarget * params.expansionFactor;
 
       const moistureContentPercentage = params.moistureContent / 100.0;
       const harvestableClusters: ProcessedTreatedCluster[] = [];
@@ -191,16 +190,20 @@ export const processClustersForYear = async (
       }
 
       const moveInCosts = getMoveInCosts({
-        System: params.system,
-        MoveInDist: moveInDistance,
-        DieselFuelPrice: params.dieselFuelPrice,
-        ChipAll: params.treatmentid === 10 ? true : false, // true if treatment is biomass salvage
+        system: params.system,
+        moveInDistance: moveInDistance,
+        dieselFuelPrice: params.dieselFuelPrice,
+        isBiomassSalvage: params.treatmentid === 10 ? true : false, // true if treatment is biomass salvage
+        wageFaller: params.wageFaller,
+        wageOther: params.wageOther,
+        laborBenefits: params.laborBenefits,
+        ppiCurrent: params.ppiCurrent,
       });
 
-      console.log(`move in cost: ${moveInCosts.Residue}`);
+      console.log(`move in cost: ${moveInCosts.biomassCost}`);
 
       results.totalMoveInDistance = moveInDistance;
-      results.totalMoveInCost = moveInCosts.Residue;
+      results.totalMoveInCost = moveInCosts.biomassCost;
 
       /*** run LCA ***/
       const lcaInputs: LcaInputs = {
@@ -354,16 +357,22 @@ const processCluster = async (
   errorIds: string[]
 ) => {
   try {
-    const frcsResult: OutputVarMod = await runFrcsOnCluster(
+    const frcsResult: FrcsOutputs = await runFrcsOnCluster(
       cluster,
       params.system,
       params.dieselFuelPrice,
-      params.moistureContent
+      params.moistureContent,
+      params.wageFaller,
+      params.wageOther,
+      params.laborBenefits,
+      params.ppiCurrent,
+      params.residueRecovFracWT,
+      params.residueRecovFracCTL
     );
 
-    const clusterFeedstock = frcsResult.Residue.WeightPerAcre * cluster.area; // green tons
+    const clusterFeedstock = frcsResult.biomass.yieldPerAcre * cluster.area; // green tons
     const clusterCoproduct =
-      (frcsResult.Total.WeightPerAcre - frcsResult.Residue.WeightPerAcre) * cluster.area; // green tons
+      (frcsResult.total.yieldPerAcre - frcsResult.biomass.yieldPerAcre) * cluster.area; // green tons
     if (clusterFeedstock < 1) {
       throw new Error(`Cluster biomass was: ${clusterFeedstock}, which is too low to use`);
     }
@@ -391,15 +400,15 @@ const processCluster = async (
 
     cluster.feedstock = clusterFeedstock;
     results.candidateTotalFeedstock += clusterFeedstock;
-    cluster.feedstockHarvestCost = frcsResult.Residue.CostPerAcre * cluster.area;
+    cluster.feedstockHarvestCost = frcsResult.biomass.costPerAcre * cluster.area;
     cluster.coproduct = clusterCoproduct;
     cluster.coproductHarvestCost =
-      (frcsResult.Total.CostPerAcre - frcsResult.Residue.CostPerAcre) * cluster.area;
+      (frcsResult.total.costPerAcre - frcsResult.biomass.costPerAcre) * cluster.area;
     cluster.frcsResult = frcsResult;
     cluster.transportationCost = transportationCostTotal;
-    cluster.diesel = frcsResult.Residue.DieselPerAcre * cluster.area;
-    cluster.gasoline = frcsResult.Residue.GasolinePerAcre * cluster.area;
-    cluster.juetFuel = frcsResult.Residue.JetFuelPerAcre * cluster.area;
+    cluster.diesel = frcsResult.biomass.dieselPerAcre * cluster.area;
+    cluster.gasoline = frcsResult.biomass.gasolinePerAcre * cluster.area;
+    cluster.juetFuel = frcsResult.biomass.jetFuelPerAcre * cluster.area;
     cluster.distance = distance;
     cluster.transportationDistance = distance * 2 * numberOfTripsForTransportation;
     harvestableClusters.push(cluster);

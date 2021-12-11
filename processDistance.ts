@@ -1,5 +1,5 @@
 import { getMoveInCosts } from '@ucdavis/frcs';
-import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
+import { FrcsOutputs } from '@ucdavis/frcs/out/model';
 import { lifeCycleAnalysis } from '@ucdavis/lca/function';
 import { LcaInputs } from '@ucdavis/lca/model';
 import { CashFlow, OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/output.model';
@@ -106,16 +106,20 @@ export const processClustersByDistance = async (
       }
 
       const moveInCosts = getMoveInCosts({
-        System: params.system,
-        MoveInDist: moveInDistance,
-        DieselFuelPrice: params.dieselFuelPrice,
-        ChipAll: params.treatmentid === 10 ? true : false, // true if treatment is biomass salvage
+        system: params.system,
+        moveInDistance: moveInDistance,
+        dieselFuelPrice: params.dieselFuelPrice,
+        isBiomassSalvage: params.treatmentid === 10 ? true : false, // true if treatment is biomass salvage
+        wageFaller: params.wageFaller,
+        wageOther: params.wageOther,
+        laborBenefits: params.laborBenefits,
+        ppiCurrent: params.ppiCurrent,
       });
 
-      console.log(`move in cost: ${moveInCosts.Residue}`);
+      console.log(`move in cost: ${moveInCosts.biomassCost}`);
 
       results.totalMoveInDistance = moveInDistance;
-      results.totalMoveInCost = moveInCosts.Residue;
+      results.totalMoveInCost = moveInCosts.biomassCost;
 
       results.numberOfClusters = results.clusterNumbers.length;
 
@@ -317,17 +321,23 @@ const selectClusters = async (
   return new Promise<void>(async (res, rej) => {
     for (const cluster of sortedClusters) {
       try {
-        const frcsResult: OutputVarMod = await runFrcsOnCluster(
+        const frcsResult: FrcsOutputs = await runFrcsOnCluster(
           cluster,
           params.system,
           params.dieselFuelPrice,
-          params.moistureContent
+          params.moistureContent,
+          params.wageFaller,
+          params.wageOther,
+          params.laborBenefits,
+          params.ppiCurrent,
+          params.residueRecovFracWT,
+          params.residueRecovFracCTL
         );
 
         // use frcs calculated available feedstock
-        const clusterFeedstock = frcsResult.Residue.WeightPerAcre * cluster.area; // green tons
+        const clusterFeedstock = frcsResult.biomass.yieldPerAcre * cluster.area; // green tons
         const clusterCoproduct =
-          (frcsResult.Total.WeightPerAcre - frcsResult.Residue.WeightPerAcre) * cluster.area; // green tons
+          (frcsResult.total.yieldPerAcre - frcsResult.biomass.yieldPerAcre) * cluster.area; // green tons
         if (clusterFeedstock < 1) {
           throw new Error(`Cluster biomass was: ${clusterFeedstock}, which is too low to use`);
         }
@@ -355,16 +365,16 @@ const selectClusters = async (
         );
 
         results.totalFeedstock += clusterFeedstock;
-        results.totalHarvestCost += frcsResult.Residue.CostPerAcre * cluster.area;
+        results.totalHarvestCost += frcsResult.biomass.costPerAcre * cluster.area;
         results.totalCoproduct += clusterCoproduct;
         results.totalCoproductCost +=
-          (frcsResult.Total.CostPerAcre - frcsResult.Residue.CostPerAcre) * cluster.area;
+          (frcsResult.total.costPerAcre - frcsResult.biomass.costPerAcre) * cluster.area;
 
         results.totalArea += cluster.area;
         results.totalTransportationCost += transportationCostTotal;
-        lcaTotals.totalDiesel += frcsResult.Residue.DieselPerAcre * cluster.area;
-        lcaTotals.totalGasoline += frcsResult.Residue.GasolinePerAcre * cluster.area;
-        lcaTotals.totalJetFuel += frcsResult.Residue.JetFuelPerAcre * cluster.area;
+        lcaTotals.totalDiesel += frcsResult.biomass.dieselPerAcre * cluster.area;
+        lcaTotals.totalGasoline += frcsResult.biomass.gasolinePerAcre * cluster.area;
+        lcaTotals.totalJetFuel += frcsResult.biomass.jetFuelPerAcre * cluster.area;
         lcaTotals.totalTransportationDistance += distance * 2 * numberOfTripsForTransportation;
 
         results.clusters.push({
@@ -372,8 +382,8 @@ const selectClusters = async (
           area: cluster.area,
           biomass: clusterFeedstock,
           distance: distance,
-          combinedCost: frcsResult.Total.CostPerAcre * cluster.area,
-          residueCost: frcsResult.Residue.CostPerAcre * cluster.area,
+          combinedCost: frcsResult.total.costPerAcre * cluster.area,
+          residueCost: frcsResult.biomass.costPerAcre * cluster.area,
           transportationCost: transportationCostTotal,
           frcsResult: frcsResult,
           center_lat: cluster.center_lat,

@@ -1,10 +1,10 @@
-import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
+import { FrcsOutputs } from '@ucdavis/frcs/out/model';
 import { TreatedCluster } from './treatedcluster';
 
 export interface ProcessedTreatedCluster extends TreatedCluster {
   feedstock: number;
   coproduct: number;
-  frcsResult: OutputVarMod;
+  frcsResult: FrcsOutputs;
   feedstockHarvestCost: number;
   coproductHarvestCost: number;
   transportationCost: number;

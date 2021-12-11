@@ -6,9 +6,26 @@ export const runFrcsOnCluster = async (
   cluster: TreatedCluster,
   system: string,
   dieselFuelPrice: number,
-  moistureContent: number
+  moistureContent: number,
+  wageFaller: number,
+  wageOther: number,
+  laborBenefits: number,
+  ppiCurrent: number,
+  residueRecovFracWT: number,
+  residueRecovFracCTL: number
 ) => {
-  const frcsInputs = getFrcsInputs(cluster, system, dieselFuelPrice, moistureContent);
+  const frcsInputs = getFrcsInputs(
+    cluster,
+    system,
+    dieselFuelPrice,
+    moistureContent,
+    wageFaller,
+    wageOther,
+    laborBenefits,
+    ppiCurrent,
+    residueRecovFracWT,
+    residueRecovFracCTL
+  );
   const clusterFrcsOutput = runFrcs(frcsInputs);
   return clusterFrcsOutput;
 };
@@ -18,7 +35,13 @@ export const testRunFrcsOnCluster = async (
   system: string,
   distance: number,
   dieselFuelPrice: number,
-  moistureContent: number
+  moistureContent: number,
+  wageFaller: number,
+  wageOther: number,
+  laborBenefits: number,
+  ppiCurrent: number,
+  residueRecovFracWT: number,
+  residueRecovFracCTL: number
 ) => {
   const {
     frcsInputs,
@@ -36,8 +59,20 @@ export const testRunFrcsOnCluster = async (
     residueWeightLLT,
     residueFractionLLT,
     volumeLLT,
-    removalsLLT
-  } = getFrcsInputsTest(cluster, system, distance, dieselFuelPrice, moistureContent);
+    removalsLLT,
+  } = getFrcsInputsTest(
+    cluster,
+    system,
+    distance,
+    dieselFuelPrice,
+    moistureContent,
+    wageFaller,
+    wageOther,
+    laborBenefits,
+    ppiCurrent,
+    residueRecovFracWT,
+    residueRecovFracCTL
+  );
   console.log(JSON.stringify(frcsInputs));
   const frcsResult = runFrcs(frcsInputs);
   return {
@@ -57,6 +92,6 @@ export const testRunFrcsOnCluster = async (
     residueFractionLLT,
     volumeLLT,
     removalsLLT,
-    frcsResult
+    frcsResult,
   };
 };

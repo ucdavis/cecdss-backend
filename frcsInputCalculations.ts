@@ -1,4 +1,4 @@
-import { InputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
+import { FrcsInputs } from '@ucdavis/frcs/out/model';
 import { TreatedCluster } from './models/treatedcluster';
 
 export const METERS_TO_ACRES = 0.00024711;
@@ -11,7 +11,13 @@ export const getFrcsInputs = (
   cluster: TreatedCluster,
   system: string,
   dieselFuelPrice: number,
-  moistureContent: number
+  moistureContent: number,
+  wageFaller: number,
+  wageOther: number,
+  laborBenefits: number,
+  ppiCurrent: number,
+  residueRecovFracWT: number,
+  residueRecovFracCTL: number
 ) => {
   const boleWeightCT =
     calcBoleWeightCT(cluster) / // dry short tons
@@ -44,39 +50,45 @@ export const getFrcsInputs = (
   const volumeLLT = calcVolumeLLT(cluster, system);
   const removalsLLT = calcRemovalsLLT(cluster, system);
 
-  const frcsInputs: InputVarMod = {
-    System: system,
-    PartialCut: cluster.treatmentid === 1 ? false : true, // partial cut = false only on clear cut
-    DeliverDist:
+  const frcsInputs: FrcsInputs = {
+    system: system,
+    isPartialCut: cluster.treatmentid === 1 ? false : true, // partial cut = false only on clear cut
+    deliverToLandingDistance:
       system === 'Helicopter Manual WT' || system === 'Helicopter CTL'
         ? cluster.mean_yarding // if system is helicopter, use calculated mean_yarding
         : // otherwise convert straight line distance to distance along a slope // divide by 100 since slope is in %
           cluster.mean_yarding * Math.sqrt(1 + Math.pow(cluster.slope / 100, 2)),
-    Slope: !!cluster.slope ? cluster.slope : 0,
-    Elevation: !!cluster.center_elevation ? cluster.center_elevation : 0,
-    CalcLoad: true, // always true
-    CalcMoveIn: false, // always false, we calculate separately in getMoveInCosts function
-    MoveInDist: 0,
-    Area: cluster.area,
-    CalcResidues: true, // always true
-    UserSpecWDCT: !volumeCT || !boleWeightCT ? 0 : boleWeightCT / volumeCT,
-    UserSpecWDSLT: !volumeSLT || !boleWeightSLT ? 0 : boleWeightSLT / volumeSLT,
-    UserSpecWDLLT: !volumeLLT || !boleWeightLLT ? 0 : boleWeightLLT / volumeLLT,
-    UserSpecRFCT: !residueFractionCT ? 0 : residueFractionCT,
-    UserSpecRFSLT: !residueFractionSLT ? 0 : residueFractionSLT,
-    UserSpecRFLLT: !residueFractionLLT ? 0 : residueFractionLLT,
-    UserSpecHFCT: 0.2, // constant
-    UserSpecHFSLT: 0, // constant
-    UserSpecHFLLT: 0, // constant
-    RemovalsCT: removalsCT,
-    RemovalsSLT: removalsSLT,
-    RemovalsLLT: removalsLLT,
-    TreeVolCT: !volumeCT || !removalsCT ? 0 : volumeCT / removalsCT,
-    TreeVolSLT: !volumeSLT || !removalsSLT ? 0 : volumeSLT / removalsSLT,
-    TreeVolLLT: !volumeLLT || !removalsLLT ? 0 : volumeLLT / removalsLLT,
-    DieselFuelPrice: dieselFuelPrice,
-    MoistureContent: moistureContent,
-    ChipAll: cluster.treatmentid === 10 ? true : false, // true if treatment is biomass Salvage
+    slope: !!cluster.slope ? cluster.slope : 0,
+    elevation: !!cluster.center_elevation ? cluster.center_elevation : 0,
+    includeLoadingCosts: true, // always true
+    includeMoveInCosts: false, // always false, we calculate separately in getMoveInCosts function
+    moveInDistance: 0,
+    area: cluster.area,
+    includeCostsCollectChipResidues: true, // always true
+    woodDensityCT: !volumeCT || !boleWeightCT ? 0 : boleWeightCT / volumeCT,
+    woodDensitySLT: !volumeSLT || !boleWeightSLT ? 0 : boleWeightSLT / volumeSLT,
+    woodDensityLLT: !volumeLLT || !boleWeightLLT ? 0 : boleWeightLLT / volumeLLT,
+    residueFractionCT: !residueFractionCT ? 0 : residueFractionCT,
+    residueFractionSLT: !residueFractionSLT ? 0 : residueFractionSLT,
+    residueFractionLLT: !residueFractionLLT ? 0 : residueFractionLLT,
+    hardwoodFractionCT: 0.2, // constant
+    hardwoodFractionSLT: 0, // constant
+    hardwoodFractionLLT: 0, // constant
+    treesPerAcreCT: removalsCT,
+    treesPerAcreSLT: removalsSLT,
+    treesPerAcreLLT: removalsLLT,
+    volumeCT: !volumeCT || !removalsCT ? 0 : volumeCT / removalsCT,
+    volumeSLT: !volumeSLT || !removalsSLT ? 0 : volumeSLT / removalsSLT,
+    volumeLLT: !volumeLLT || !removalsLLT ? 0 : volumeLLT / removalsLLT,
+    dieselFuelPrice: dieselFuelPrice,
+    moistureContent: moistureContent,
+    isBiomassSalvage: cluster.treatmentid === 10 ? true : false, // true if treatment is biomass Salvage
+    wageFaller: wageFaller,
+    wageOther: wageOther,
+    laborBenefits: laborBenefits,
+    ppiCurrent: ppiCurrent,
+    residueRecovFracWT: residueRecovFracWT,
+    residueRecovFracCTL: residueRecovFracCTL,
   };
   return frcsInputs;
 };
@@ -86,7 +98,13 @@ export const getFrcsInputsTest = (
   system: string,
   distance: number,
   dieselFuelPrice: number,
-  moistureContent: number
+  moistureContent: number,
+  wageFaller: number,
+  wageOther: number,
+  laborBenefits: number,
+  ppiCurrent: number,
+  residueRecovFracWT: number,
+  residueRecovFracCTL: number
 ) => {
   const fixedClusterUnits = cluster;
   const boleWeightCT =
@@ -120,39 +138,45 @@ export const getFrcsInputsTest = (
   const volumeLLT = calcVolumeLLT(fixedClusterUnits, system);
   const removalsLLT = calcRemovalsLLT(fixedClusterUnits, system);
 
-  const frcsInputs: InputVarMod = {
-    System: system,
-    PartialCut: fixedClusterUnits.treatmentid === 1 ? false : true, // partial cut = false only on clear cut
-    DeliverDist:
+  const frcsInputs: FrcsInputs = {
+    system: system,
+    isPartialCut: fixedClusterUnits.treatmentid === 1 ? false : true, // partial cut = false only on clear cut
+    deliverToLandingDistance:
       system === 'Helicopter Manual WT' || system === 'Helicopter CTL'
         ? fixedClusterUnits.mean_yarding // if system is helicopter, use calculated mean_yarding
         : fixedClusterUnits.mean_yarding * // otherwise convert straight line distance to distance along a slope
           Math.sqrt(1 + Math.pow(fixedClusterUnits.slope / 100, 2)), // divide by 100 since slope is in %
-    Slope: !!fixedClusterUnits.slope ? fixedClusterUnits.slope : 0,
-    Elevation: !!fixedClusterUnits.center_elevation ? fixedClusterUnits.center_elevation : 0,
-    CalcLoad: true, // always true
-    CalcMoveIn: false, // always false, we calculate separately in getMoveInCosts function
-    MoveInDist: 0,
-    Area: fixedClusterUnits.area,
-    CalcResidues: true, // always true
-    UserSpecWDCT: !volumeCT || !boleWeightCT ? 0 : boleWeightCT / volumeCT,
-    UserSpecWDSLT: !volumeSLT || !boleWeightSLT ? 0 : boleWeightSLT / volumeSLT,
-    UserSpecWDLLT: !volumeLLT || !boleWeightLLT ? 0 : boleWeightLLT / volumeLLT,
-    UserSpecRFCT: !residueFractionCT ? 0 : residueFractionCT,
-    UserSpecRFSLT: !residueFractionSLT ? 0 : residueFractionSLT,
-    UserSpecRFLLT: !residueFractionLLT ? 0 : residueFractionLLT,
-    UserSpecHFCT: 0.2, // constant
-    UserSpecHFSLT: 0, // constant
-    UserSpecHFLLT: 0, // constant
-    RemovalsCT: removalsCT,
-    RemovalsSLT: removalsSLT,
-    RemovalsLLT: removalsLLT,
-    TreeVolCT: !volumeCT || !removalsCT ? 0 : volumeCT / removalsCT,
-    TreeVolSLT: !volumeSLT || !removalsSLT ? 0 : volumeSLT / removalsSLT,
-    TreeVolLLT: !volumeLLT || !removalsLLT ? 0 : volumeLLT / removalsLLT,
-    DieselFuelPrice: dieselFuelPrice,
-    MoistureContent: moistureContent,
-    ChipAll: fixedClusterUnits.treatmentid === 10 ? true : false, // true if treatment is biomass salvage
+    slope: !!fixedClusterUnits.slope ? fixedClusterUnits.slope : 0,
+    elevation: !!fixedClusterUnits.center_elevation ? fixedClusterUnits.center_elevation : 0,
+    includeLoadingCosts: true, // always true
+    includeMoveInCosts: false, // always false, we calculate separately in getMoveInCosts function
+    moveInDistance: 0,
+    area: fixedClusterUnits.area,
+    includeCostsCollectChipResidues: true, // always true
+    woodDensityCT: !volumeCT || !boleWeightCT ? 0 : boleWeightCT / volumeCT,
+    woodDensitySLT: !volumeSLT || !boleWeightSLT ? 0 : boleWeightSLT / volumeSLT,
+    woodDensityLLT: !volumeLLT || !boleWeightLLT ? 0 : boleWeightLLT / volumeLLT,
+    residueFractionCT: !residueFractionCT ? 0 : residueFractionCT,
+    residueFractionSLT: !residueFractionSLT ? 0 : residueFractionSLT,
+    residueFractionLLT: !residueFractionLLT ? 0 : residueFractionLLT,
+    hardwoodFractionCT: 0.2, // constant
+    hardwoodFractionSLT: 0, // constant
+    hardwoodFractionLLT: 0, // constant
+    treesPerAcreCT: removalsCT,
+    treesPerAcreSLT: removalsSLT,
+    treesPerAcreLLT: removalsLLT,
+    volumeCT: !volumeCT || !removalsCT ? 0 : volumeCT / removalsCT,
+    volumeSLT: !volumeSLT || !removalsSLT ? 0 : volumeSLT / removalsSLT,
+    volumeLLT: !volumeLLT || !removalsLLT ? 0 : volumeLLT / removalsLLT,
+    dieselFuelPrice: dieselFuelPrice,
+    moistureContent: moistureContent,
+    isBiomassSalvage: fixedClusterUnits.treatmentid === 10 ? true : false, // true if treatment is biomass salvage
+    wageFaller: wageFaller,
+    wageOther: wageOther,
+    laborBenefits: laborBenefits,
+    ppiCurrent: ppiCurrent,
+    residueRecovFracWT: residueRecovFracWT,
+    residueRecovFracCTL: residueRecovFracCTL,
   };
   return {
     frcsInputs,
