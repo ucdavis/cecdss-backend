@@ -1,4 +1,4 @@
-import { OutputVarMod } from '@ucdavis/frcs/out/systems/frcs.model';
+import { FrcsOutputs } from '@ucdavis/frcs/out/model';
 import {
   InputModCHP,
   InputModGP,
@@ -39,6 +39,12 @@ export interface RequestParams {
   carbonCreditPrice: number;
   energyEconomyRatio: number;
   includeCarbonCredit: boolean;
+  wageFaller: number;
+  wageOther: number;
+  laborBenefits: number;
+  ppiCurrent: number;
+  residueRecovFracWT: number;
+  residueRecovFracCTL: number;
 }
 
 export interface RequestByDistanceParams {
@@ -60,6 +66,12 @@ export interface RequestByDistanceParams {
   carbonCreditPrice: number;
   energyEconomyRatio: number;
   includeCarbonCredit: boolean;
+  wageFaller: number;
+  wageOther: number;
+  laborBenefits: number;
+  ppiCurrent: number;
+  residueRecovFracWT: number;
+  residueRecovFracCTL: number;
 }
 
 export interface RequestByRoutesParams {
@@ -186,7 +198,7 @@ export interface ClusterResult {
   distance: number;
   residueCost: number;
   transportationCost: number;
-  frcsResult: OutputVarMod;
+  frcsResult: FrcsOutputs;
   center_lat: number;
   center_lng: number;
   landing_lat: number;

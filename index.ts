@@ -330,9 +330,15 @@ app.post('/testCluster', async (req, res) => {
       params.system,
       distance * 0.621371, // move in distance km to miles
       params.dieselFuelPrice,
-      params.moistureContent
+      params.moistureContent,
+      params.wageFaller,
+      params.wageOther,
+      params.laborBenefits,
+      params.ppiCurrent,
+      params.residueRecovFracWT,
+      params.residueRecovFracCTL
     );
-    const residueBiomass = frcsResult.Residue.WeightPerAcre * cluster.area;
+    const residueBiomass = frcsResult.biomass.yieldPerAcre * cluster.area;
     const transportationCostTotal = getTransportationCostTotal(
       residueBiomass,
       distance,
@@ -346,8 +352,8 @@ app.post('/testCluster', async (req, res) => {
       area: cluster.area,
       residueBiomass: residueBiomass,
       distance: distance,
-      combinedCost: frcsResult.Total.CostPerAcre * cluster.area,
-      residueCost: frcsResult.Residue.CostPerAcre * cluster.area,
+      combinedCost: frcsResult.total.costPerAcre * cluster.area,
+      residueCost: frcsResult.biomass.costPerAcre * cluster.area,
       transportationCost: transportationCostTotal,
       frcsInputs: {
         boleWeightCT,
@@ -394,7 +400,13 @@ app.post('/testCluster', async (req, res) => {
       params.system,
       distance * 0.621371, // move in distance km to miles
       params.dieselFuelPrice,
-      params.moistureContent
+      params.moistureContent,
+      params.wageFaller,
+      params.wageOther,
+      params.laborBenefits,
+      params.ppiCurrent,
+      params.residueRecovFracWT,
+      params.residueRecovFracCTL
     );
 
     clusterResults = {
