@@ -1,4 +1,4 @@
-import { runFrcs } from '@ucdavis/frcs';
+import { getFrcsOutputs } from '@ucdavis/frcs';
 import { getFrcsInputs, getFrcsInputsTest } from './frcsInputCalculations';
 import { TreatedCluster } from './models/treatedcluster';
 
@@ -26,7 +26,7 @@ export const runFrcsOnCluster = async (
     residueRecovFracWT,
     residueRecovFracCTL
   );
-  const clusterFrcsOutput = runFrcs(frcsInputs);
+  const clusterFrcsOutput = getFrcsOutputs(frcsInputs);
   return clusterFrcsOutput;
 };
 
@@ -74,7 +74,7 @@ export const testRunFrcsOnCluster = async (
     residueRecovFracCTL
   );
   console.log(JSON.stringify(frcsInputs));
-  const frcsResult = runFrcs(frcsInputs);
+  const frcsResult = getFrcsOutputs(frcsInputs);
   return {
     frcsInputs,
     boleWeightCT,

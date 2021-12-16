@@ -338,7 +338,7 @@ app.post('/testCluster', async (req, res) => {
       params.residueRecovFracWT,
       params.residueRecovFracCTL
     );
-    const residueBiomass = frcsResult.biomass.yieldPerAcre * cluster.area;
+    const residueBiomass = frcsResult.residual.yieldPerAcre * cluster.area;
     const transportationCostTotal = getTransportationCostTotal(
       residueBiomass,
       distance,
@@ -353,7 +353,7 @@ app.post('/testCluster', async (req, res) => {
       residueBiomass: residueBiomass,
       distance: distance,
       combinedCost: frcsResult.total.costPerAcre * cluster.area,
-      residueCost: frcsResult.biomass.costPerAcre * cluster.area,
+      residueCost: frcsResult.residual.costPerAcre * cluster.area,
       transportationCost: transportationCostTotal,
       frcsInputs: {
         boleWeightCT,
