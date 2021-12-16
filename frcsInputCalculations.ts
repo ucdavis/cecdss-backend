@@ -28,7 +28,7 @@ export const getFrcsInputs = (
     (1 - moistureContent / 100); // convert to green short tons
   const residueFractionCT = residueWeightCT / boleWeightCT;
   const removalsCT = calcRemovalsCT(cluster);
-  const volumeCT = calcVolumeCT(cluster) / removalsCT;
+  const volumeCT = calcVolumeCT(cluster);
 
   const boleWeightSLT =
     calcBoleWeightSLT(cluster) / // dry short tons
@@ -38,7 +38,7 @@ export const getFrcsInputs = (
     (1 - moistureContent / 100); // convert to green short tons
   const residueFractionSLT = residueWeightSLT / boleWeightSLT;
   const removalsSLT = calcRemovalsSLT(cluster);
-  const volumeSLT = calcVolumeSLT(cluster) / removalsSLT;
+  const volumeSLT = calcVolumeSLT(cluster);
 
   const boleWeightLLT =
     calcBoleWeightLLT(cluster) / // dry short tons
@@ -48,7 +48,7 @@ export const getFrcsInputs = (
     (1 - moistureContent / 100); // convert to green short tons
   const residueFractionLLT = residueWeightLLT / boleWeightLLT;
   const removalsLLT = calcRemovalsLLT(cluster, system);
-  const volumeLLT = calcVolumeLLT(cluster, system) / removalsLLT;
+  const volumeLLT = calcVolumeLLT(cluster, system);
 
   const frcsInputs: FrcsInputs = {
     system: system,
