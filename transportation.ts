@@ -1,9 +1,7 @@
 import { ClusterResult, YearlyTripResults } from 'models/types';
 import OSRM from 'osrm';
 
-// 2020 Median Pay for Heavy and Tractor-trailer Truck Drivers according to BLS
-// https://www.bls.gov/ooh/transportation-and-material-moving/heavy-and-tractor-trailer-truck-drivers.htm
-const TRUCK_LABOR = 22.66;
+const TRUCK_LABOR = 24.71; // Hourly mean wage for tractor-trailer truck drivers in California, May 2020
 const DRIVERS_PER_TRUCK = 1.67;
 const MILES_PER_GALLON = 6;
 const OIL_ETC_COST = 0.35; // $/mile
