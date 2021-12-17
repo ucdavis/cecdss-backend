@@ -1,10 +1,7 @@
 import { ClusterResult, YearlyTripResults } from 'models/types';
 import OSRM from 'osrm';
 
-const TRUCK_LABOR = 24.71; // Hourly mean wage for tractor-trailer truck drivers in California, May 2020
-const BENEFITS_OVERHEAD = 67; // in percentage
 const MILES_PER_GALLON = 6;
-const OIL_ETC_COST = 0.35; // $/mile
 export const KM_TO_MILES = 0.621371;
 export const FULL_TRUCK_PAYLOAD = 25; // FRCS assumption (in green tons)
 
@@ -12,7 +9,10 @@ export const getTransportationCostTotal = (
   feedstockAmount: number,
   distance: number,
   duration: number,
-  dieselFuelPrice: number
+  dieselFuelPrice: number,
+  wageTruckDriver: number,
+  driverBenefits: number,
+  oilCost: number
 ) => {
   let transportationCostFullPayloadPerGT = 0;
   if (feedstockAmount >= FULL_TRUCK_PAYLOAD) {
@@ -20,7 +20,10 @@ export const getTransportationCostTotal = (
       distance,
       duration,
       dieselFuelPrice,
-      FULL_TRUCK_PAYLOAD
+      FULL_TRUCK_PAYLOAD,
+      wageTruckDriver,
+      driverBenefits,
+      oilCost
     );
   }
   let transportationCostPartialPayloadPerGT = 0;
@@ -30,7 +33,10 @@ export const getTransportationCostTotal = (
       distance,
       duration,
       dieselFuelPrice,
-      partialPayload
+      partialPayload,
+      wageTruckDriver,
+      driverBenefits,
+      oilCost
     );
   }
   const transportationCostTotal =
@@ -44,17 +50,20 @@ export const getTransportationCostPerGT = (
   distance: number,
   duration: number,
   dieselFuelPrice: number,
-  payload: number
+  payload: number,
+  wageTruckDriver: number,
+  driverBenefits: number,
+  oilCost: number
 ) => {
   const miles = distance * KM_TO_MILES * 2; // 2* cause you have to drive back
 
   const hours = duration * 2;
 
-  const labor = (1 + BENEFITS_OVERHEAD / 100) * TRUCK_LABOR * hours;
+  const labor = (1 + driverBenefits / 100) * wageTruckDriver * hours;
 
   const fuel = (1 / MILES_PER_GALLON) * dieselFuelPrice * miles;
 
-  const oil = OIL_ETC_COST * miles;
+  const oil = oilCost * miles;
 
   let cost = oil + fuel + labor;
 

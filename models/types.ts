@@ -46,6 +46,9 @@ export interface RequestParams {
   residueRecovFracWT: number;
   residueRecovFracCTL: number;
   expansionFactor: number;
+  wageTruckDriver: number;
+  driverBenefits: number;
+  oilCost: number;
 }
 
 export interface RequestByDistanceParams {
@@ -73,6 +76,9 @@ export interface RequestByDistanceParams {
   ppiCurrent: number;
   residueRecovFracWT: number;
   residueRecovFracCTL: number;
+  wageTruckDriver: number;
+  driverBenefits: number;
+  oilCost: number;
 }
 
 export interface RequestByRoutesParams {

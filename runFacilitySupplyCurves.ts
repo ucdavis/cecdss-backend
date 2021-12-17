@@ -140,6 +140,9 @@ const run = async () => {
         ppiCurrent: 284.7, // Oct 2021
         residueRecovFracWT: 80, // FRCS default 80%
         residueRecovFracCTL: 50, // FRCS default 50%
+        wageTruckDriver: 24.71, // Hourly mean wage for tractor-trailer truck drivers May 2020
+        driverBenefits: 67,
+        oilCost: 0.35,
       };
 
       for (let i = 1; i < bandsInMiles.length; i++) {
