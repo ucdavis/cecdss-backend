@@ -2,7 +2,7 @@ import { ClusterResult, YearlyTripResults } from 'models/types';
 import OSRM from 'osrm';
 
 const TRUCK_LABOR = 24.71; // Hourly mean wage for tractor-trailer truck drivers in California, May 2020
-const DRIVERS_PER_TRUCK = 1.67;
+const BENEFITS_OVERHEAD = 67; // in percentage
 const MILES_PER_GALLON = 6;
 const OIL_ETC_COST = 0.35; // $/mile
 export const KM_TO_MILES = 0.621371;
@@ -46,27 +46,17 @@ export const getTransportationCostPerGT = (
   dieselFuelPrice: number,
   payload: number
 ) => {
-  /*
-
-    2* cause you have to drive back
-
-    1.67 cause a driver costs you 67% more than salary in benefits and overhead
-
-    1/6 cause you get 6 MPG
-
-    0.29 Depreciation, repair and maintenance of truck
-
-  */
-
-  const miles = distance * KM_TO_MILES * 2;
+  const miles = distance * KM_TO_MILES * 2; // 2* cause you have to drive back
 
   const hours = duration * 2;
 
-  const labor = DRIVERS_PER_TRUCK * TRUCK_LABOR * hours;
+  const labor = (1 + BENEFITS_OVERHEAD / 100) * TRUCK_LABOR * hours;
 
   const fuel = (1 / MILES_PER_GALLON) * dieselFuelPrice * miles;
 
-  let cost = OIL_ETC_COST * miles + fuel + labor;
+  const oil = OIL_ETC_COST * miles;
+
+  let cost = oil + fuel + labor;
 
   cost = cost / payload;
 
