@@ -398,7 +398,10 @@ const processCluster = async (
       clusterFeedstock,
       distance,
       duration,
-      params.dieselFuelPrice
+      params.dieselFuelPrice,
+      params.wageTruckDriver,
+      params.driverBenefits,
+      params.oilCost
     );
 
     cluster.feedstock = clusterFeedstock;

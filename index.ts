@@ -343,7 +343,10 @@ app.post('/testCluster', async (req, res) => {
       residueBiomass,
       distance,
       duration,
-      params.dieselFuelPrice
+      params.dieselFuelPrice,
+      params.wageTruckDriver,
+      params.driverBenefits,
+      params.oilCost
     );
 
     clusterResults = {

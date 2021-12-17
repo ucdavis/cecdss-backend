@@ -364,7 +364,10 @@ const selectClusters = async (
           clusterFeedstock,
           distance,
           duration,
-          params.dieselFuelPrice
+          params.dieselFuelPrice,
+          params.wageTruckDriver,
+          params.driverBenefits,
+          params.oilCost
         );
 
         results.totalFeedstock += clusterFeedstock;

@@ -1,12 +1,7 @@
 import { ClusterResult, YearlyTripResults } from 'models/types';
 import OSRM from 'osrm';
 
-// 2020 Median Pay for Heavy and Tractor-trailer Truck Drivers according to BLS
-// https://www.bls.gov/ooh/transportation-and-material-moving/heavy-and-tractor-trailer-truck-drivers.htm
-const TRUCK_LABOR = 22.66;
-const DRIVERS_PER_TRUCK = 1.67;
 const MILES_PER_GALLON = 6;
-const OIL_ETC_COST = 0.35; // $/mile
 export const KM_TO_MILES = 0.621371;
 export const FULL_TRUCK_PAYLOAD = 25; // FRCS assumption (in green tons)
 
@@ -14,7 +9,10 @@ export const getTransportationCostTotal = (
   feedstockAmount: number,
   distance: number,
   duration: number,
-  dieselFuelPrice: number
+  dieselFuelPrice: number,
+  wageTruckDriver: number,
+  driverBenefits: number,
+  oilCost: number
 ) => {
   let transportationCostFullPayloadPerGT = 0;
   if (feedstockAmount >= FULL_TRUCK_PAYLOAD) {
@@ -22,7 +20,10 @@ export const getTransportationCostTotal = (
       distance,
       duration,
       dieselFuelPrice,
-      FULL_TRUCK_PAYLOAD
+      FULL_TRUCK_PAYLOAD,
+      wageTruckDriver,
+      driverBenefits,
+      oilCost
     );
   }
   let transportationCostPartialPayloadPerGT = 0;
@@ -32,7 +33,10 @@ export const getTransportationCostTotal = (
       distance,
       duration,
       dieselFuelPrice,
-      partialPayload
+      partialPayload,
+      wageTruckDriver,
+      driverBenefits,
+      oilCost
     );
   }
   const transportationCostTotal =
@@ -46,29 +50,22 @@ export const getTransportationCostPerGT = (
   distance: number,
   duration: number,
   dieselFuelPrice: number,
-  payload: number
+  payload: number,
+  wageTruckDriver: number,
+  driverBenefits: number,
+  oilCost: number
 ) => {
-  /*
-
-    2* cause you have to drive back
-
-    1.67 cause a driver costs you 67% more than salary in benefits and overhead
-
-    1/6 cause you get 6 MPG
-
-    0.29 Depreciation, repair and maintenance of truck
-
-  */
-
-  const miles = distance * KM_TO_MILES * 2;
+  const miles = distance * KM_TO_MILES * 2; // 2* cause you have to drive back
 
   const hours = duration * 2;
 
-  const labor = DRIVERS_PER_TRUCK * TRUCK_LABOR * hours;
+  const labor = (1 + driverBenefits / 100) * wageTruckDriver * hours;
 
   const fuel = (1 / MILES_PER_GALLON) * dieselFuelPrice * miles;
 
-  let cost = OIL_ETC_COST * miles + fuel + labor;
+  const oil = oilCost * miles;
+
+  let cost = oil + fuel + labor;
 
   cost = cost / payload;
 
