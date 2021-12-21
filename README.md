@@ -10,7 +10,7 @@ The API can be called directly, but more commonly is used for the backend to the
 
 ### Node setup
 
-1. Make sure you are using node v10
+1. Make sure you are using node v14
 1. `npm install` the dependencies. (You may have to `npm rebuild` if you are having problems with osrm bindings)
 
 ### Config setup
