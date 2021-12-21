@@ -12,17 +12,23 @@
       "url": "https://github.com/ucdavis/cecdss-backend/blob/master/LICENSE"
     }
   },
-  "host": "cecdss-backend.azurewebsites.net",
-  "basePath": "/",
-  "schemes": ["https"],
+  "host": "virtserver.swaggerhub.com",
+  "basePath": "/ucdavis/CECDSS-Backend/1.0.0",
+  "schemes": [
+    "https"
+  ],
   "paths": {
     "/initialProcessing": {
       "post": {
-        "tags": ["main"],
+        "tags": [
+          "main"
+        ],
         "summary": "determines transmissions and techno-economic results across all years",
         "description": "Used for initial processing of data before calling /process for individual year\n",
         "operationId": "initialProcessing",
-        "produces": ["application/json"],
+        "produces": [
+          "application/json"
+        ],
         "parameters": [
           {
             "in": "body",
@@ -46,12 +52,217 @@
           }
         }
       }
+    },
+    "/process": {
+      "post": {
+        "tags": [
+          "main"
+        ],
+        "summary": "process facility biomass for single year",
+        "description": "Used for annual biomass supply location and optimization\n",
+        "operationId": "process",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "params",
+            "description": "Main params",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/RequestParams"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success",
+            "schema": {
+              "$ref": "#/definitions/YearlyResult"
+            }
+          },
+          "400": {
+            "description": "bad input parameter"
+          }
+        }
+      }
+    },
+    "/processRoutes": {
+      "post": {
+        "tags": [
+          "main"
+        ],
+        "summary": "Get routing information for all passed clusters",
+        "description": "Used to generate transportation route overlays to each cluster\n",
+        "operationId": "processRoutes",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "params",
+            "description": "Cluster information along with facility details",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/RequestByRoutesParams"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success",
+            "schema": {
+              "title": "YearlyResult.tripGeometries.[]",
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Geometry"
+              }
+            }
+          },
+          "400": {
+            "description": "bad input parameter"
+          }
+        }
+      }
     }
   },
   "definitions": {
+    "RequestParams": {
+      "type": "object",
+      "required": [
+        "annualGeneration",
+        "biomassTarget",
+        "carbonCreditPrice",
+        "cashFlow",
+        "clusterIds",
+        "costOfEquity",
+        "dieselFuelPrice",
+        "energyEconomyRatio",
+        "errorIds",
+        "facilityLat",
+        "facilityLng",
+        "firstYear",
+        "generalInflation",
+        "includeCarbonCredit",
+        "lat",
+        "lng",
+        "moistureContent",
+        "radius",
+        "system",
+        "teaModel",
+        "treatmentid",
+        "year"
+      ],
+      "properties": {
+        "facilityLat": {
+          "type": "number",
+          "title": "RequestParams.facilityLat"
+        },
+        "facilityLng": {
+          "type": "number",
+          "title": "RequestParams.facilityLng"
+        },
+        "lat": {
+          "type": "number",
+          "title": "RequestParams.lat"
+        },
+        "lng": {
+          "type": "number",
+          "title": "RequestParams.lng"
+        },
+        "system": {
+          "type": "string",
+          "title": "RequestParams.system"
+        },
+        "treatmentid": {
+          "type": "number",
+          "title": "RequestParams.treatmentid"
+        },
+        "dieselFuelPrice": {
+          "type": "number",
+          "title": "RequestParams.dieselFuelPrice"
+        },
+        "biomassTarget": {
+          "type": "number",
+          "title": "RequestParams.biomassTarget"
+        },
+        "firstYear": {
+          "type": "number",
+          "title": "RequestParams.firstYear"
+        },
+        "year": {
+          "type": "number",
+          "title": "RequestParams.year"
+        },
+        "clusterIds": {
+          "type": "array",
+          "title": "RequestParams.clusterIds",
+          "items": {
+            "type": "string",
+            "title": "RequestParams.clusterIds.[]"
+          }
+        },
+        "errorIds": {
+          "type": "array",
+          "title": "RequestParams.errorIds",
+          "items": {
+            "type": "string",
+            "title": "RequestParams.errorIds.[]"
+          }
+        },
+        "radius": {
+          "type": "number",
+          "title": "RequestParams.radius"
+        },
+        "teaModel": {
+          "type": "string",
+          "title": "RequestParams.teaModel"
+        },
+        "annualGeneration": {
+          "type": "number",
+          "title": "RequestParams.annualGeneration"
+        },
+        "moistureContent": {
+          "type": "number",
+          "title": "RequestParams.moistureContent"
+        },
+        "cashFlow": {
+          "title": "RequestParams.cashFlow"
+        },
+        "costOfEquity": {
+          "type": "number",
+          "title": "RequestParams.costOfEquity"
+        },
+        "generalInflation": {
+          "type": "number",
+          "title": "RequestParams.generalInflation"
+        },
+        "carbonCreditPrice": {
+          "type": "number",
+          "title": "RequestParams.carbonCreditPrice"
+        },
+        "energyEconomyRatio": {
+          "type": "number",
+          "title": "RequestParams.energyEconomyRatio"
+        },
+        "includeCarbonCredit": {
+          "type": "boolean",
+          "title": "RequestParams.includeCarbonCredit"
+        }
+      },
+      "title": "RequestParams"
+    },
     "RequestParamsAllYears": {
       "type": "object",
-      "required": ["facilityLat", "facilityLng", "teaInputs", "teaModel", "transmission"],
+      "required": [
+        "facilityLat",
+        "facilityLng",
+        "teaInputs",
+        "teaModel",
+        "transmission"
+      ],
       "properties": {
         "facilityLat": {
           "type": "number",
@@ -76,8 +287,208 @@
           "properties": {}
         }
       },
-      "title": "RequestParamsAllYears",
-      "additionalProperties": {}
+      "title": "RequestParamsAllYears"
+    },
+    "RequestByRoutesParams": {
+      "type": "object",
+      "required": [
+        "clusters",
+        "facilityLat",
+        "facilityLng"
+      ],
+      "properties": {
+        "facilityLat": {
+          "type": "number",
+          "title": "RequestByRoutesParams.facilityLat"
+        },
+        "facilityLng": {
+          "type": "number",
+          "title": "RequestByRoutesParams.facilityLng"
+        },
+        "clusters": {
+          "title": "RequestByRoutesParams.clusters"
+        }
+      },
+      "title": "RequestByRoutesParams"
+    },
+    "Geometry": {
+      "type": "object",
+      "required": [
+        "coodinates",
+        "type"
+      ],
+      "properties": {
+        "coodinates": {
+          "type": "array",
+          "title": "Geometry.coodinates",
+          "items": {
+            "type": "array",
+            "title": "Geometry.coodinates.[].[]",
+            "items": {
+              "type": "number",
+              "title": "Geometry.coodinates.[].[]"
+            }
+          }
+        },
+        "type": {
+          "type": "string",
+          "title": "Geometry.type"
+        }
+      },
+      "title": "Geometry"
+    },
+    "YearlyResult": {
+      "type": "object",
+      "required": [
+        "cashFlow",
+        "clusterNumbers",
+        "clusters",
+        "energyRevenueRequired",
+        "energyRevenueRequiredPW",
+        "errorClusterNumbers",
+        "errorClusters",
+        "errorGeoJson",
+        "feedstockCostPerTon",
+        "fuelCost",
+        "geoJson",
+        "harvestCostPerDryTon",
+        "moveInCostPerDryTon",
+        "numberOfClusters",
+        "radius",
+        "totalArea",
+        "totalCoproduct",
+        "totalCoproductCost",
+        "totalDryCoproduct",
+        "totalDryFeedstock",
+        "totalFeedstock",
+        "totalHarvestCost",
+        "totalMoveInCost",
+        "totalMoveInDistance",
+        "totalTransportationCost",
+        "transportationCostPerDryTon",
+        "tripGeometries",
+        "year"
+      ],
+      "properties": {
+        "tripGeometries": {
+          "title": "YearlyResult.tripGeometries"
+        },
+        "year": {
+          "type": "number",
+          "title": "YearlyResult.year"
+        },
+        "lcaResults": {
+          "title": "YearlyResult.lcaResults"
+        },
+        "totalArea": {
+          "type": "number",
+          "title": "YearlyResult.totalArea"
+        },
+        "totalFeedstock": {
+          "type": "number",
+          "title": "YearlyResult.totalFeedstock"
+        },
+        "totalDryFeedstock": {
+          "type": "number",
+          "title": "YearlyResult.totalDryFeedstock"
+        },
+        "totalHarvestCost": {
+          "type": "number",
+          "title": "YearlyResult.totalHarvestCost"
+        },
+        "totalCoproduct": {
+          "type": "number",
+          "title": "YearlyResult.totalCoproduct"
+        },
+        "totalDryCoproduct": {
+          "type": "number",
+          "title": "YearlyResult.totalDryCoproduct"
+        },
+        "totalCoproductCost": {
+          "type": "number",
+          "title": "YearlyResult.totalCoproductCost"
+        },
+        "totalMoveInCost": {
+          "type": "number",
+          "title": "YearlyResult.totalMoveInCost"
+        },
+        "totalMoveInDistance": {
+          "type": "number",
+          "title": "YearlyResult.totalMoveInDistance"
+        },
+        "totalTransportationCost": {
+          "type": "number",
+          "title": "YearlyResult.totalTransportationCost"
+        },
+        "harvestCostPerDryTon": {
+          "type": "number",
+          "title": "YearlyResult.harvestCostPerDryTon"
+        },
+        "transportationCostPerDryTon": {
+          "type": "number",
+          "title": "YearlyResult.transportationCostPerDryTon"
+        },
+        "moveInCostPerDryTon": {
+          "type": "number",
+          "title": "YearlyResult.moveInCostPerDryTon"
+        },
+        "feedstockCostPerTon": {
+          "type": "number",
+          "title": "YearlyResult.feedstockCostPerTon"
+        },
+        "numberOfClusters": {
+          "type": "number",
+          "title": "YearlyResult.numberOfClusters"
+        },
+        "clusterNumbers": {
+          "type": "array",
+          "title": "YearlyResult.clusterNumbers",
+          "items": {
+            "type": "string",
+            "title": "YearlyResult.clusterNumbers.[]"
+          }
+        },
+        "clusters": {
+          "title": "YearlyResult.clusters"
+        },
+        "errorClusters": {
+          "title": "YearlyResult.errorClusters"
+        },
+        "errorClusterNumbers": {
+          "type": "array",
+          "title": "YearlyResult.errorClusterNumbers",
+          "items": {
+            "type": "string",
+            "title": "YearlyResult.errorClusterNumbers.[]"
+          }
+        },
+        "radius": {
+          "type": "number",
+          "title": "YearlyResult.radius"
+        },
+        "fuelCost": {
+          "type": "number",
+          "title": "YearlyResult.fuelCost"
+        },
+        "energyRevenueRequired": {
+          "type": "number",
+          "title": "YearlyResult.energyRevenueRequired"
+        },
+        "energyRevenueRequiredPW": {
+          "type": "number",
+          "title": "YearlyResult.energyRevenueRequiredPW"
+        },
+        "cashFlow": {
+          "title": "YearlyResult.cashFlow"
+        },
+        "geoJson": {
+          "title": "YearlyResult.geoJson"
+        },
+        "errorGeoJson": {
+          "title": "YearlyResult.errorGeoJson"
+        }
+      },
+      "title": "YearlyResult"
     },
     "AllYearsResults": {
       "type": "object",
@@ -116,8 +527,7 @@
           "title": "AllYearsResults.distanceToNearestSubstation"
         }
       },
-      "title": "AllYearsResults",
-      "additionalProperties": {}
+      "title": "AllYearsResults"
     }
   }
 }
