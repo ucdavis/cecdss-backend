@@ -29,7 +29,7 @@ import {
 import { processClustersByDistance } from './processDistance';
 import { getTeaOutputs, processClustersForYear, runLca } from './processYear';
 import { testRunFrcsOnCluster } from './runFrcs';
-import { getTransportationCostTotal, KM_TO_MILES } from './transportation';
+import { getMoveInTrip, getTransportationCostTotal, KM_TO_MILES } from './transportation';
 import { hookupKnexTiming } from './util';
 
 // tslint:disable-next-line: no-var-requires
@@ -287,6 +287,31 @@ app.post('/processRoutes', async (req, res) => {
   console.log(`Running took ${t1 - t0} milliseconds.`);
 
   res.status(200).json(routeResults);
+});
+
+app.post('/processMoveIn', async (req, res) => {
+  const t0 = performance.now();
+  const params: RequestByRoutesParams = req.body;
+
+  if (params.clusters.length > 3000) {
+    res.status(400).send('Too many clusters');
+    return;
+  }
+
+  // get moveIn geometry for return trip from facility to all clusters
+  const moveInTripResults = await getMoveInTrip(
+    osrm,
+    params.facilityLat,
+    params.facilityLng,
+    params.clusters
+  );
+
+  const t1 = performance.now();
+  console.log(`Running took ${t1 - t0} milliseconds.`);
+
+  const tripGeometries = moveInTripResults.trips.map((t) => t.geometry);
+
+  res.status(200).json(tripGeometries);
 });
 
 // tslint:disable-next-line: max-file-line-count
