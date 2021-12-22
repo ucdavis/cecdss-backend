@@ -14,21 +14,15 @@
   },
   "host": "virtserver.swaggerhub.com",
   "basePath": "/ucdavis/CECDSS-Backend/1.0.0",
-  "schemes": [
-    "https"
-  ],
+  "schemes": ["https"],
   "paths": {
     "/initialProcessing": {
       "post": {
-        "tags": [
-          "main"
-        ],
+        "tags": ["main"],
         "summary": "determines transmissions and techno-economic results across all years",
         "description": "Used for initial processing of data before calling /process for individual year\n",
         "operationId": "initialProcessing",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "parameters": [
           {
             "in": "body",
@@ -55,15 +49,11 @@
     },
     "/process": {
       "post": {
-        "tags": [
-          "main"
-        ],
+        "tags": ["main"],
         "summary": "process facility biomass for single year",
         "description": "Used for annual biomass supply location and optimization\n",
         "operationId": "process",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "parameters": [
           {
             "in": "body",
@@ -90,15 +80,11 @@
     },
     "/processRoutes": {
       "post": {
-        "tags": [
-          "main"
-        ],
+        "tags": ["main"],
         "summary": "Get routing information for all passed clusters",
         "description": "Used to generate transportation route overlays to each cluster\n",
         "operationId": "processRoutes",
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "parameters": [
           {
             "in": "body",
@@ -123,6 +109,41 @@
           },
           "400": {
             "description": "bad input parameter"
+          }
+        }
+      }
+    },
+    "/processMoveIn": {
+      "post": {
+        "tags": ["main"],
+        "summary": "Get move-in trip information for all passed clusters",
+        "description": "Used to generate move-in trip single route that can access all clusters\n",
+        "operationId": "processMoveIn",
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "params",
+            "description": "Cluster information along with facility details",
+            "required": false,
+            "schema": {
+              "$ref": "#/definitions/RequestByRoutesParams"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success",
+            "schema": {
+              "title": "YearlyResult.tripGeometries.[]",
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Geometry"
+              }
+            }
+          },
+          "400": {
+            "description": "too many clusters"
           }
         }
       }
@@ -256,13 +277,7 @@
     },
     "RequestParamsAllYears": {
       "type": "object",
-      "required": [
-        "facilityLat",
-        "facilityLng",
-        "teaInputs",
-        "teaModel",
-        "transmission"
-      ],
+      "required": ["facilityLat", "facilityLng", "teaInputs", "teaModel", "transmission"],
       "properties": {
         "facilityLat": {
           "type": "number",
@@ -291,11 +306,7 @@
     },
     "RequestByRoutesParams": {
       "type": "object",
-      "required": [
-        "clusters",
-        "facilityLat",
-        "facilityLng"
-      ],
+      "required": ["clusters", "facilityLat", "facilityLng"],
       "properties": {
         "facilityLat": {
           "type": "number",
@@ -313,10 +324,7 @@
     },
     "Geometry": {
       "type": "object",
-      "required": [
-        "coodinates",
-        "type"
-      ],
+      "required": ["coodinates", "type"],
       "properties": {
         "coodinates": {
           "type": "array",
