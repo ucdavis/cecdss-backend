@@ -160,28 +160,25 @@ export const processClustersForYear = async (
         `annualGeneration: ${params.annualGeneration}, radius: ${results.radius}, # of clusters: ${results.numberOfClusters}`
       );
 
-      console.log(`calculating move in distance on ${results.clusters.length} clusters...`);
-      const t0 = performance.now();
-      const moveInTripResults = await getMoveInTrip(
-        osrm,
-        params.facilityLat,
-        params.facilityLng,
-        results.clusters
-      );
-      const t1 = performance.now();
-      console.log(
-        `Running took ${t1 - t0} milliseconds, move in distance: ${moveInTripResults.distance}.`
-      );
-
-      trackMetric(`moveInDistance for ${results.clusters.length} clusters`, t1 - t0);
-
-      results.tripGeometries = moveInTripResults.trips.map((t) => t.geometry);
-
       /*** move-in cost calculation ***/
-      // we only update the move in distance if it is applicable for this type of treatment & system
+      // we only calculate the move in distance if it is applicable for this type of treatment & system
       let moveInDistance = 0;
       if (results.totalFeedstock > 0 && params.system === 'Ground-Based CTL') {
-        console.log('updating move in distance of');
+        console.log(`calculating move in distance on ${results.clusters.length} clusters...`);
+        const t0 = performance.now();
+        const moveInTripResults = await getMoveInTrip(
+          osrm,
+          params.facilityLat,
+          params.facilityLng,
+          results.clusters
+        );
+        const t1 = performance.now();
+        console.log(
+          `Running took ${t1 - t0} milliseconds, move in distance: ${moveInTripResults.distance}.`
+        );
+
+        trackMetric(`moveInDistance for ${results.clusters.length} clusters`, t1 - t0);
+
         moveInDistance = moveInTripResults.distance;
       } else {
         console.log(
