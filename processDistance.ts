@@ -96,7 +96,7 @@ export const processClustersByDistance = async (
 
       let moveInDistance = 0;
 
-      if (doesNeedMoveIn(results, params)) {
+      if (results.totalFeedstock > 0) {
         console.log('move in distance required, calculating');
         moveInDistance = await calculateMoveInDistance(osrm, clusters, results, params);
       } else {
@@ -193,10 +193,6 @@ export const processClustersByDistance = async (
       reject(e.message);
     }
   });
-};
-
-const doesNeedMoveIn = (results: YearlyResult, params: RequestByDistanceParams): boolean => {
-  return results.totalFeedstock > 0 && params.system === 'Ground-Based CTL';
 };
 
 const calculateMoveInDistance = async (
