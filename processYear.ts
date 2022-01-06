@@ -11,6 +11,7 @@ import {
   genericCombinedHeatPower,
   genericPowerOnly,
 } from '@ucdavis/tea/utility';
+import { getEquipmentPrice } from 'equipment';
 import { getBoundsOfDistance, getDistance } from 'geolib';
 import { Knex } from 'knex';
 import OSRM from 'osrm';
@@ -205,6 +206,9 @@ export const processClustersForYear = async (
       results.totalMoveInCost = moveInOutputs.residualCost;
       lcaTotals.totalDiesel += moveInOutputs.residualDiesel;
 
+      const CPI2002 = 179.9;
+      const CPI2016 = 240.0075;
+
       /*** run LCA ***/
       const lcaInputs: LcaInputs = {
         technology: params.teaModel,
@@ -212,6 +216,14 @@ export const processClustersForYear = async (
         gasoline: lcaTotals.totalGasoline / params.annualGeneration, // gal/kWh
         jetfuel: lcaTotals.totalJetFuel / params.annualGeneration, // gal/kWh
         distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration, // miles/kWh
+        construction:
+          params.year === params.firstYear
+            ? ((params.capitalCost / CPI2016) * CPI2002) / 1000 / params.annualGeneration
+            : 0, // thousand$/kWh, assume the first year is 2016 for now
+        equipment:
+          getEquipmentPrice(params.system, params.year - params.firstYear) /
+          1000 /
+          params.annualGeneration, // thousand$/kWh
       };
 
       console.log('running LCA...');
