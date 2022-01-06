@@ -49,6 +49,7 @@ export interface RequestParams {
   wageTruckDriver: number;
   driverBenefits: number;
   oilCost: number;
+  capitalCost: number; // combine capital cost = facility capital + transmission cost + unloading cost
 }
 
 export interface RequestByDistanceParams {
