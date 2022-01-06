@@ -11,11 +11,11 @@ import {
   genericCombinedHeatPower,
   genericPowerOnly,
 } from '@ucdavis/tea/utility';
-import { getEquipmentPrice } from 'equipment';
 import { getBoundsOfDistance, getDistance } from 'geolib';
 import { Knex } from 'knex';
 import OSRM from 'osrm';
 import { performance } from 'perf_hooks';
+import { getEquipmentPrice } from './equipment';
 import { trackMetric } from './logging';
 import { LCAresults } from './models/lcaModels';
 import { ProcessedTreatedCluster } from './models/ProcessedTreatedCluster';

@@ -11,7 +11,6 @@ import {
   genericCombinedHeatPower,
   genericPowerOnly,
 } from '@ucdavis/tea/utility';
-import { getEquipmentPrice } from 'equipment';
 import geocluster from 'geocluster';
 import { getDistance } from 'geolib';
 import { Knex } from 'knex';
