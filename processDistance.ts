@@ -11,6 +11,7 @@ import {
   genericCombinedHeatPower,
   genericPowerOnly,
 } from '@ucdavis/tea/utility';
+import { getEquipmentPrice } from 'equipment';
 import geocluster from 'geocluster';
 import { getDistance } from 'geolib';
 import { Knex } from 'knex';
@@ -126,12 +127,15 @@ export const processClustersByDistance = async (
 
       results.numberOfClusters = results.clusterNumbers.length;
 
+      /*** run LCA ***/
       const lcaInputs: LcaInputs = {
         technology: params.teaModel,
-        diesel: lcaTotals.totalDiesel / params.annualGeneration, // gal/MWh
-        gasoline: lcaTotals.totalGasoline / params.annualGeneration, // gal/MWh
-        jetfuel: lcaTotals.totalJetFuel / params.annualGeneration, // gal/MWh
-        distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration, // km/MWh
+        diesel: lcaTotals.totalDiesel / params.annualGeneration, // gal/kWh
+        gasoline: lcaTotals.totalGasoline / params.annualGeneration, // gal/kWh
+        jetfuel: lcaTotals.totalJetFuel / params.annualGeneration, // gal/kWh
+        distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration, // miles/kWh
+        construction: 0,
+        equipment: 0,
       };
 
       const lca = await runLca(lcaInputs);
