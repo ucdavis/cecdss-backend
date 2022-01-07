@@ -15,6 +15,7 @@ import { getBoundsOfDistance, getDistance } from 'geolib';
 import { Knex } from 'knex';
 import OSRM from 'osrm';
 import { performance } from 'perf_hooks';
+import { getEquipmentPrice } from './equipment';
 import { trackMetric } from './logging';
 import { LCAresults } from './models/lcaModels';
 import { ProcessedTreatedCluster } from './models/ProcessedTreatedCluster';
@@ -28,8 +29,8 @@ import {
 } from './models/types';
 import { runFrcsOnCluster } from './runFrcs';
 import {
+  calculateMoveInDistance,
   FULL_TRUCK_PAYLOAD,
-  getMoveInTrip,
   getTransportationCostTotal,
   KM_TO_MILES,
 } from './transportation';
@@ -164,22 +165,13 @@ export const processClustersForYear = async (
       // we only calculate the move in distance if it is applicable for this type of treatment & system
       let moveInDistance = 0;
       if (results.totalFeedstock > 0) {
-        console.log(`calculating move in distance on ${results.clusters.length} clusters...`);
-        const t0 = performance.now();
-        const moveInTripResults = await getMoveInTrip(
+        console.log('move in distance required, calculating');
+        moveInDistance = await calculateMoveInDistance(
           osrm,
+          results,
           params.facilityLat,
-          params.facilityLng,
-          results.clusters
+          params.facilityLng
         );
-        const t1 = performance.now();
-        console.log(
-          `Running took ${t1 - t0} milliseconds, move in distance: ${moveInTripResults.distance}.`
-        );
-
-        trackMetric(`moveInDistance for ${results.clusters.length} clusters`, t1 - t0);
-
-        moveInDistance = moveInTripResults.distance;
       } else {
         console.log(
           `skipping updating move in distance, totalBiomass: ${results.totalFeedstock}, # of clusters: ${results.clusters.length}`
@@ -205,6 +197,9 @@ export const processClustersForYear = async (
       results.totalMoveInCost = moveInOutputs.residualCost;
       lcaTotals.totalDiesel += moveInOutputs.residualDiesel;
 
+      const CPI2002 = 179.9;
+      const CPI2021 = 266.236;
+
       /*** run LCA ***/
       const lcaInputs: LcaInputs = {
         technology: params.teaModel,
@@ -212,6 +207,14 @@ export const processClustersForYear = async (
         gasoline: lcaTotals.totalGasoline / params.annualGeneration, // gal/kWh
         jetfuel: lcaTotals.totalJetFuel / params.annualGeneration, // gal/kWh
         distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration, // miles/kWh
+        construction:
+          params.year === params.firstYear
+            ? ((params.capitalCost / CPI2021) * CPI2002) / 1000 / params.annualGeneration
+            : 0, // thousand$/kWh, assume the first year is 2016 for now
+        equipment:
+          getEquipmentPrice(params.system, params.year - params.firstYear) /
+          1000 /
+          params.annualGeneration, // thousand$/kWh
       };
 
       console.log('running LCA...');
@@ -219,6 +222,11 @@ export const processClustersForYear = async (
       const lca = await runLca(lcaInputs);
       console.log('lifeCycleEmissions = ', lca.lifeCycleEmissions);
       results.lcaResults = lca;
+
+      // unloading
+      const unloadingCostPerDryTon =
+        (0.16667 * (44.31 + 1.6 * params.wageTruckDriver) + 0.2 * 1.67 * params.wageTruckDriver) /
+        (FULL_TRUCK_PAYLOAD * (1 - moistureContentPercentage));
 
       // calculate dry values ($ / dry metric ton)
       results.totalDryFeedstock =
@@ -228,7 +236,7 @@ export const processClustersForYear = async (
 
       results.harvestCostPerDryTon = results.totalHarvestCost / results.totalDryFeedstock;
       results.transportationCostPerDryTon =
-        results.totalTransportationCost / results.totalDryFeedstock;
+        results.totalTransportationCost / results.totalDryFeedstock + unloadingCostPerDryTon;
       results.moveInCostPerDryTon = results.totalMoveInCost / results.totalDryFeedstock;
       results.feedstockCostPerTon =
         results.harvestCostPerDryTon +

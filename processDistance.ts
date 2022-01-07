@@ -11,18 +11,15 @@ import {
   genericCombinedHeatPower,
   genericPowerOnly,
 } from '@ucdavis/tea/utility';
-import geocluster from 'geocluster';
-import { getDistance } from 'geolib';
 import { Knex } from 'knex';
 import OSRM from 'osrm';
-import { performance } from 'perf_hooks';
 import { LCAresults } from './models/lcaModels';
 import { TreatedCluster } from './models/treatedcluster';
-import { ClusterResult, LCATotals, RequestByDistanceParams, YearlyResult } from './models/types';
+import { LCATotals, RequestByDistanceParams, YearlyResult } from './models/types';
 import { runFrcsOnCluster } from './runFrcs';
 import {
+  calculateMoveInDistance,
   FULL_TRUCK_PAYLOAD,
-  getMoveInTrip,
   getTransportationCostTotal,
   KM_TO_MILES,
 } from './transportation';
@@ -98,7 +95,12 @@ export const processClustersByDistance = async (
 
       if (results.totalFeedstock > 0) {
         console.log('move in distance required, calculating');
-        moveInDistance = await calculateMoveInDistance(osrm, clusters, results, params);
+        moveInDistance = await calculateMoveInDistance(
+          osrm,
+          results,
+          params.facilityLat,
+          params.facilityLng
+        );
       } else {
         console.log(
           `skipping updating move in distance, totalBiomass: ${results.totalFeedstock}, # of clusters: ${results.clusters.length}`
@@ -126,20 +128,28 @@ export const processClustersByDistance = async (
 
       results.numberOfClusters = results.clusterNumbers.length;
 
+      /*** run LCA ***/
       const lcaInputs: LcaInputs = {
         technology: params.teaModel,
-        diesel: lcaTotals.totalDiesel / params.annualGeneration, // gal/MWh
-        gasoline: lcaTotals.totalGasoline / params.annualGeneration, // gal/MWh
-        jetfuel: lcaTotals.totalJetFuel / params.annualGeneration, // gal/MWh
-        distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration, // km/MWh
+        diesel: lcaTotals.totalDiesel / params.annualGeneration, // gal/kWh
+        gasoline: lcaTotals.totalGasoline / params.annualGeneration, // gal/kWh
+        jetfuel: lcaTotals.totalJetFuel / params.annualGeneration, // gal/kWh
+        distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration, // miles/kWh
+        construction: 0,
+        equipment: 0,
       };
 
       const lca = await runLca(lcaInputs);
       results.lcaResults = lca;
 
       const moistureContentPercentage = params.moistureContent / 100.0;
-
       const TONNE_TO_TON = 1.10231; // 1 metric ton = 1.10231 short tons
+
+      // unloading
+      const unloadingCostPerDryTon =
+        (0.16667 * (44.31 + 1.6 * params.wageTruckDriver) + 0.2 * 1.67 * params.wageTruckDriver) /
+        (FULL_TRUCK_PAYLOAD * (1 - moistureContentPercentage));
+
       // calculate dry values ($ / dry metric ton)
       results.totalDryFeedstock =
         (results.totalFeedstock * (1 - moistureContentPercentage)) / TONNE_TO_TON;
@@ -148,7 +158,7 @@ export const processClustersByDistance = async (
 
       results.harvestCostPerDryTon = results.totalHarvestCost / results.totalDryFeedstock;
       results.transportationCostPerDryTon =
-        results.totalTransportationCost / results.totalDryFeedstock;
+        results.totalTransportationCost / results.totalDryFeedstock + unloadingCostPerDryTon;
       results.moveInCostPerDryTon = results.totalMoveInCost / results.totalDryFeedstock;
       results.feedstockCostPerTon =
         results.harvestCostPerDryTon +
@@ -193,96 +203,6 @@ export const processClustersByDistance = async (
       reject(e.message);
     }
   });
-};
-
-const calculateMoveInDistance = async (
-  osrm: OSRM,
-  clusters: TreatedCluster[],
-  results: YearlyResult,
-  params: RequestByDistanceParams
-) => {
-  let totalMoveInDistance = 0;
-
-  const maxClustersPerChunk = 2000;
-
-  if (results.clusters.length > maxClustersPerChunk) {
-    // want enough chunks so that we don't exceed max clusters per chunk
-    const numChunks = Math.ceil(results.clusters.length / maxClustersPerChunk);
-
-    console.log(
-      `${results.clusters.length} is too many clusters, breaking into ${numChunks} chunks`
-    );
-
-    // assuming facility coordinates are biomass coordinates
-    const sortedClusters = results.clusters.sort(
-      (a, b) =>
-        getDistance(
-          { latitude: params.facilityLat, longitude: params.facilityLng },
-          { latitude: a.center_lat, longitude: a.center_lng }
-        ) -
-        getDistance(
-          { latitude: params.facilityLat, longitude: params.facilityLng },
-          { latitude: b.center_lat, longitude: b.center_lng }
-        )
-    );
-
-    // break up into numChunks chunks by taking clusters in order
-    const groupedClusters = sortedClusters.reduce((resultArray, item, index) => {
-      const chunkIndex = Math.floor(index / maxClustersPerChunk);
-
-      if (!resultArray[chunkIndex]) {
-        resultArray[chunkIndex] = []; // start a new chunk
-      }
-
-      resultArray[chunkIndex].push(item);
-
-      return resultArray;
-      // tslint:disable-next-line:align
-    }, [] as ClusterResult[][]);
-
-    // for each chunk, calculate the move in distance and add them up
-    for (let i = 0; i < groupedClusters.length; i++) {
-      const clustersInGroup = groupedClusters[i];
-
-      console.log(
-        `calculating move in distance on ${clustersInGroup.length} clusters in chunk ${i + 1}...`
-      );
-
-      const t0_chunk = performance.now();
-      const chunkedMoveInTripResults = await getMoveInTrip(
-        osrm,
-        params.facilityLat,
-        params.facilityLng,
-        clustersInGroup
-      );
-      const t1_chunk = performance.now();
-      console.log(
-        `Running took ${t1_chunk - t0_chunk} milliseconds, move in distance: ${
-          chunkedMoveInTripResults.distance
-        }.`
-      );
-
-      totalMoveInDistance += chunkedMoveInTripResults.distance;
-    }
-  } else {
-    // not that many clusters, so don't bother chunking
-    console.log(`calculating move in distance on ${clusters.length} clusters...`);
-    const t0 = performance.now();
-    const moveInTripResults = await getMoveInTrip(
-      osrm,
-      params.facilityLat,
-      params.facilityLng,
-      results.clusters
-    );
-    const t1 = performance.now();
-    console.log(
-      `Running took ${t1 - t0} milliseconds, move in distance: ${moveInTripResults.distance}.`
-    );
-
-    totalMoveInDistance = moveInTripResults.distance;
-  }
-
-  return totalMoveInDistance;
 };
 
 const getClusters = async (
