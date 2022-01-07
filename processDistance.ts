@@ -21,6 +21,7 @@ import { TreatedCluster } from './models/treatedcluster';
 import { ClusterResult, LCATotals, RequestByDistanceParams, YearlyResult } from './models/types';
 import { runFrcsOnCluster } from './runFrcs';
 import {
+  calculateMoveInDistance,
   FULL_TRUCK_PAYLOAD,
   getMoveInTrip,
   getTransportationCostTotal,
@@ -206,91 +207,6 @@ export const processClustersByDistance = async (
       reject(e.message);
     }
   });
-};
-
-const calculateMoveInDistance = async (
-  osrm: OSRM,
-  results: YearlyResult,
-  facilityLat: number,
-  facilityLng: number
-) => {
-  let totalMoveInDistance = 0;
-
-  const maxClustersPerChunk = 2000;
-
-  if (results.clusters.length > maxClustersPerChunk) {
-    // want enough chunks so that we don't exceed max clusters per chunk
-    const numChunks = Math.ceil(results.clusters.length / maxClustersPerChunk);
-
-    console.log(
-      `${results.clusters.length} is too many clusters, breaking into ${numChunks} chunks`
-    );
-
-    // assuming facility coordinates are biomass coordinates
-    const sortedClusters = results.clusters.sort(
-      (a, b) =>
-        getDistance(
-          { latitude: facilityLat, longitude: facilityLng },
-          { latitude: a.center_lat, longitude: a.center_lng }
-        ) -
-        getDistance(
-          { latitude: facilityLat, longitude: facilityLng },
-          { latitude: b.center_lat, longitude: b.center_lng }
-        )
-    );
-
-    // break up into numChunks chunks by taking clusters in order
-    const groupedClusters = sortedClusters.reduce((resultArray, item, index) => {
-      const chunkIndex = Math.floor(index / maxClustersPerChunk);
-
-      if (!resultArray[chunkIndex]) {
-        resultArray[chunkIndex] = []; // start a new chunk
-      }
-
-      resultArray[chunkIndex].push(item);
-
-      return resultArray;
-      // tslint:disable-next-line:align
-    }, [] as ClusterResult[][]);
-
-    // for each chunk, calculate the move in distance and add them up
-    for (let i = 0; i < groupedClusters.length; i++) {
-      const clustersInGroup = groupedClusters[i];
-
-      console.log(
-        `calculating move in distance on ${clustersInGroup.length} clusters in chunk ${i + 1}...`
-      );
-
-      const t0_chunk = performance.now();
-      const chunkedMoveInTripResults = await getMoveInTrip(
-        osrm,
-        facilityLat,
-        facilityLng,
-        clustersInGroup
-      );
-      const t1_chunk = performance.now();
-      console.log(
-        `Running took ${t1_chunk - t0_chunk} milliseconds, move in distance: ${
-          chunkedMoveInTripResults.distance
-        }.`
-      );
-
-      totalMoveInDistance += chunkedMoveInTripResults.distance;
-    }
-  } else {
-    // not that many clusters, so don't bother chunking
-    console.log(`calculating move in distance on ${results.clusters.length} clusters...`);
-    const t0 = performance.now();
-    const moveInTripResults = await getMoveInTrip(osrm, facilityLat, facilityLng, results.clusters);
-    const t1 = performance.now();
-    console.log(
-      `Running took ${t1 - t0} milliseconds, move in distance: ${moveInTripResults.distance}.`
-    );
-
-    totalMoveInDistance = moveInTripResults.distance;
-  }
-
-  return totalMoveInDistance;
 };
 
 const getClusters = async (
