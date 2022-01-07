@@ -100,7 +100,6 @@ export const processClustersByDistance = async (
         console.log('move in distance required, calculating');
         moveInDistance = await calculateMoveInDistance(
           osrm,
-          clusters,
           results,
           params.facilityLat,
           params.facilityLng
@@ -211,7 +210,6 @@ export const processClustersByDistance = async (
 
 const calculateMoveInDistance = async (
   osrm: OSRM,
-  clusters: TreatedCluster[],
   results: YearlyResult,
   facilityLat: number,
   facilityLng: number
@@ -281,7 +279,7 @@ const calculateMoveInDistance = async (
     }
   } else {
     // not that many clusters, so don't bother chunking
-    console.log(`calculating move in distance on ${clusters.length} clusters...`);
+    console.log(`calculating move in distance on ${results.clusters.length} clusters...`);
     const t0 = performance.now();
     const moveInTripResults = await getMoveInTrip(osrm, facilityLat, facilityLng, results.clusters);
     const t1 = performance.now();
