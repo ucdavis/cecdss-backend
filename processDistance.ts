@@ -141,8 +141,13 @@ export const processClustersByDistance = async (
       results.lcaResults = lca;
 
       const moistureContentPercentage = params.moistureContent / 100.0;
-
       const TONNE_TO_TON = 1.10231; // 1 metric ton = 1.10231 short tons
+
+      // unloading
+      const unloadingCostPerDryTon =
+        (0.16667 * (44.31 + 1.6 * params.wageTruckDriver) + 0.2 * 1.67 * params.wageTruckDriver) /
+        (FULL_TRUCK_PAYLOAD * (1 - moistureContentPercentage));
+
       // calculate dry values ($ / dry metric ton)
       results.totalDryFeedstock =
         (results.totalFeedstock * (1 - moistureContentPercentage)) / TONNE_TO_TON;
@@ -151,7 +156,7 @@ export const processClustersByDistance = async (
 
       results.harvestCostPerDryTon = results.totalHarvestCost / results.totalDryFeedstock;
       results.transportationCostPerDryTon =
-        results.totalTransportationCost / results.totalDryFeedstock;
+        results.totalTransportationCost / results.totalDryFeedstock + unloadingCostPerDryTon;
       results.moveInCostPerDryTon = results.totalMoveInCost / results.totalDryFeedstock;
       results.feedstockCostPerTon =
         results.harvestCostPerDryTon +
