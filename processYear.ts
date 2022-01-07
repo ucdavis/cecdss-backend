@@ -29,8 +29,8 @@ import {
 } from './models/types';
 import { runFrcsOnCluster } from './runFrcs';
 import {
+  calculateMoveInDistance,
   FULL_TRUCK_PAYLOAD,
-  getMoveInTrip,
   getTransportationCostTotal,
   KM_TO_MILES,
 } from './transportation';
@@ -165,22 +165,13 @@ export const processClustersForYear = async (
       // we only calculate the move in distance if it is applicable for this type of treatment & system
       let moveInDistance = 0;
       if (results.totalFeedstock > 0) {
-        console.log(`calculating move in distance on ${results.clusters.length} clusters...`);
-        const t0 = performance.now();
-        const moveInTripResults = await getMoveInTrip(
+        console.log('move in distance required, calculating');
+        moveInDistance = await calculateMoveInDistance(
           osrm,
+          results,
           params.facilityLat,
-          params.facilityLng,
-          results.clusters
+          params.facilityLng
         );
-        const t1 = performance.now();
-        console.log(
-          `Running took ${t1 - t0} milliseconds, move in distance: ${moveInTripResults.distance}.`
-        );
-
-        trackMetric(`moveInDistance for ${results.clusters.length} clusters`, t1 - t0);
-
-        moveInDistance = moveInTripResults.distance;
       } else {
         console.log(
           `skipping updating move in distance, totalBiomass: ${results.totalFeedstock}, # of clusters: ${results.clusters.length}`
