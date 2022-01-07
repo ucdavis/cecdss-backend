@@ -11,19 +11,15 @@ import {
   genericCombinedHeatPower,
   genericPowerOnly,
 } from '@ucdavis/tea/utility';
-import geocluster from 'geocluster';
-import { getDistance } from 'geolib';
 import { Knex } from 'knex';
 import OSRM from 'osrm';
-import { performance } from 'perf_hooks';
 import { LCAresults } from './models/lcaModels';
 import { TreatedCluster } from './models/treatedcluster';
-import { ClusterResult, LCATotals, RequestByDistanceParams, YearlyResult } from './models/types';
+import { LCATotals, RequestByDistanceParams, YearlyResult } from './models/types';
 import { runFrcsOnCluster } from './runFrcs';
 import {
   calculateMoveInDistance,
   FULL_TRUCK_PAYLOAD,
-  getMoveInTrip,
   getTransportationCostTotal,
   KM_TO_MILES,
 } from './transportation';

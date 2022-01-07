@@ -1,6 +1,7 @@
 import { getDistance } from 'geolib';
 import { ClusterResult, YearlyResult, YearlyTripResults } from 'models/types';
 import OSRM from 'osrm';
+import { performance } from 'perf_hooks';
 
 const MILES_PER_GALLON = 6;
 export const KM_TO_MILES = 0.621371;
