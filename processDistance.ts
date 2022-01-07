@@ -98,7 +98,13 @@ export const processClustersByDistance = async (
 
       if (results.totalFeedstock > 0) {
         console.log('move in distance required, calculating');
-        moveInDistance = await calculateMoveInDistance(osrm, clusters, results, params);
+        moveInDistance = await calculateMoveInDistance(
+          osrm,
+          clusters,
+          results,
+          params.facilityLat,
+          params.facilityLng
+        );
       } else {
         console.log(
           `skipping updating move in distance, totalBiomass: ${results.totalFeedstock}, # of clusters: ${results.clusters.length}`
@@ -207,7 +213,8 @@ const calculateMoveInDistance = async (
   osrm: OSRM,
   clusters: TreatedCluster[],
   results: YearlyResult,
-  params: RequestByDistanceParams
+  facilityLat: number,
+  facilityLng: number
 ) => {
   let totalMoveInDistance = 0;
 
@@ -225,11 +232,11 @@ const calculateMoveInDistance = async (
     const sortedClusters = results.clusters.sort(
       (a, b) =>
         getDistance(
-          { latitude: params.facilityLat, longitude: params.facilityLng },
+          { latitude: facilityLat, longitude: facilityLng },
           { latitude: a.center_lat, longitude: a.center_lng }
         ) -
         getDistance(
-          { latitude: params.facilityLat, longitude: params.facilityLng },
+          { latitude: facilityLat, longitude: facilityLng },
           { latitude: b.center_lat, longitude: b.center_lng }
         )
     );
@@ -259,8 +266,8 @@ const calculateMoveInDistance = async (
       const t0_chunk = performance.now();
       const chunkedMoveInTripResults = await getMoveInTrip(
         osrm,
-        params.facilityLat,
-        params.facilityLng,
+        facilityLat,
+        facilityLng,
         clustersInGroup
       );
       const t1_chunk = performance.now();
@@ -276,12 +283,7 @@ const calculateMoveInDistance = async (
     // not that many clusters, so don't bother chunking
     console.log(`calculating move in distance on ${clusters.length} clusters...`);
     const t0 = performance.now();
-    const moveInTripResults = await getMoveInTrip(
-      osrm,
-      params.facilityLat,
-      params.facilityLng,
-      results.clusters
-    );
+    const moveInTripResults = await getMoveInTrip(osrm, facilityLat, facilityLng, results.clusters);
     const t1 = performance.now();
     console.log(
       `Running took ${t1 - t0} milliseconds, move in distance: ${moveInTripResults.distance}.`
