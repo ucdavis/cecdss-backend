@@ -78,8 +78,6 @@ export const processClustersForYear = async (
         errorClusters: [],
         errorClusterNumbers: [],
         fuelCost: 0,
-        energyRevenueRequired: 0,
-        energyRevenueRequiredPW: 0,
         geoJson: [],
         errorGeoJson: [],
         cashFlow: {},
@@ -262,16 +260,7 @@ export const processClustersForYear = async (
         params.cashFlow,
         params.includeCarbonCredit
       );
-      results.energyRevenueRequired = energyRevenueRequired;
       cashFlow.EnergyRevenueRequired = energyRevenueRequired;
-      const energyRevenueRequiredPresent = computeEnergyRevenueRequiredPW(
-        params.year - params.firstYear + 1, // currently, the first year is 2016
-        params.costOfEquity,
-        energyRevenueRequired
-      );
-      console.log(`energyRevenueRequiredPW: ${energyRevenueRequiredPresent}`);
-      results.energyRevenueRequiredPW = energyRevenueRequiredPresent;
-
       results.cashFlow = cashFlow;
 
       const geoJson = await getGeoJson(db, results.clusterNumbers, results.clusters);
