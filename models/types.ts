@@ -174,8 +174,6 @@ export interface YearlyResult {
   errorClusterNumbers: string[];
   radius: number;
   fuelCost: number;
-  energyRevenueRequired: number;
-  energyRevenueRequiredPW: number;
   cashFlow: any;
   geoJson: any;
   errorGeoJson: any;
