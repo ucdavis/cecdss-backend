@@ -62,7 +62,7 @@ const run = async () => {
     facilityLng: facilityLng,
     system: harvestSystem,
     treatmentid: treatmentId,
-    dieselFuelPrice: 3.61,
+    dieselFuelPrice: 2.24,
     firstYear: 2016,
     year: 2016,
     minRadiusInMeters: 0,
