@@ -11,6 +11,7 @@ import {
   genericCombinedHeatPower,
   genericPowerOnly,
 } from '@ucdavis/tea/utility';
+import fs from 'fs';
 import { getBoundsOfDistance, getDistance } from 'geolib';
 import { Knex } from 'knex';
 import OSRM from 'osrm';
@@ -103,6 +104,7 @@ export const processClustersForYear = async (
       // get the candidate clusters whose total feedstock amount is just greater than extraBiomassTarget
       // feedstock and biomassTarget are both in short tons
       // for each cluster, run frcs and transportation model
+      const candidateIds: string[] = [];
       while (results.candidateTotalFeedstock < extraBiomassTarget) {
         if (
           // TODO: might need a better terminating condition
@@ -132,7 +134,8 @@ export const processClustersForYear = async (
           year,
           usedIds,
           errorIds,
-          results.radius
+          results.radius,
+          candidateIds
         );
         console.log(`year:${year} clusters found: ${clusters.length}`);
 
@@ -140,7 +143,15 @@ export const processClustersForYear = async (
         // add harvestable clusters to harvestableClusters
         // add Id of non-harvestable clusters to errorIds
         console.log(`year:${year} processing clusters...`);
-        await processClusters(osrm, params, clusters, results, errorIds, harvestableClusters);
+        await processClusters(
+          osrm,
+          params,
+          clusters,
+          results,
+          errorIds,
+          harvestableClusters,
+          candidateIds
+        );
       } // end of the while loop
 
       console.log(`year:${year} sorting candidate clusters by unit feedstock cost...`);
@@ -153,6 +164,25 @@ export const processClustersForYear = async (
       // select from the sorted harvestable clusters the ones that can supply one-year feedstock (biomassTarget)
       console.log(`year:${year} selecting clusters...`);
       await selectClusters(biomassTarget, sortedClusters, results, lcaTotals, usedIds);
+
+      // if (year === params.firstYear) {
+      //   // determine csv file name and only run if file does not already exist
+      //   let fileName = `${year}_test`;
+
+      //   // replace non-alphanumeric characters with underscores
+      //   fileName = fileName.replace(/[^a-z0-9]/gi, '_');
+
+      //   const fileWithDirectory = (process.env.CSV_DIR || './results/') + fileName + '.csv';
+
+      //   let fileContents = 'cluster_no,feedstockCost,feedstockAmount\n';
+      //   sortedClusters.slice(0, 100).forEach((c) => {
+      //     fileContents += `${c.cluster_no}, ${
+      //       (c.feedstockHarvestCost + c.transportationCost) / c.feedstock
+      //     },${c.feedstock}\n`;
+      //   });
+
+      //   fs.writeFileSync(fileWithDirectory, fileContents);
+      // }
 
       results.numberOfClusters = results.clusterNumbers.length;
       console.log(
@@ -287,7 +317,8 @@ const getClusters = async (
   year: number,
   usedIds: string[],
   errorIds: string[],
-  radius: number
+  radius: number,
+  candidateIds: string[]
 ): Promise<ProcessedTreatedCluster[]> => {
   return new Promise(async (res, rej) => {
     const bounds = getBoundsOfDistance({ latitude: params.lat, longitude: params.lng }, radius);
@@ -296,7 +327,7 @@ const getClusters = async (
       .where({ treatmentid: params.treatmentid })
       .where({ year: 2016 }) // TODO: filter by actual year if we get data for multiple years
       .whereIn('land_use', ['private', 'USDA Forest Service'])
-      .whereNotIn('cluster_no', [...usedIds, ...errorIds])
+      .whereNotIn('cluster_no', [...usedIds, ...errorIds, ...candidateIds])
       .whereBetween('center_lat', [bounds[0].latitude, bounds[1].latitude])
       .andWhereBetween('center_lng', [bounds[0].longitude, bounds[1].longitude]);
 
@@ -319,7 +350,8 @@ const processClusters = async (
   clusters: ProcessedTreatedCluster[],
   results: YearlyResult,
   errorIds: string[],
-  harvestableClusters: ProcessedTreatedCluster[]
+  harvestableClusters: ProcessedTreatedCluster[],
+  candidateIds: string[]
 ) => {
   return new Promise<void>(async (res, rej) => {
     const t0 = performance.now();
@@ -327,7 +359,7 @@ const processClusters = async (
     const processPromises = [];
     for (const cluster of clusters) {
       processPromises.push(
-        processCluster(cluster, params, osrm, results, harvestableClusters, errorIds)
+        processCluster(cluster, params, osrm, results, harvestableClusters, errorIds, candidateIds)
       );
     }
 
@@ -351,7 +383,8 @@ const processCluster = async (
   osrm: OSRM,
   results: YearlyResult,
   harvestableClusters: ProcessedTreatedCluster[],
-  errorIds: string[]
+  errorIds: string[],
+  candidateIds: string[]
 ) => {
   try {
     const frcsResult: FrcsOutputs = await runFrcsOnCluster(
@@ -412,6 +445,7 @@ const processCluster = async (
     cluster.distance = distance;
     cluster.transportationDistance = distance * 2 * numberOfTripsForTransportation;
     harvestableClusters.push(cluster);
+    candidateIds.push(cluster.cluster_no);
   } catch (err: any) {
     // swallow errors frcs throws and push the error message instead
     results.errorClusters.push({
