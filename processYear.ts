@@ -226,7 +226,7 @@ export const processClustersForYear = async (
       lcaTotals.totalDiesel += moveInOutputs.residualDiesel;
 
       const CPI2002 = 179.9;
-      const CPI2021 = 266.236;
+      const CPI2021 = 270.97;
 
       /*** run LCA ***/
       const lcaInputs: LcaInputs = {
