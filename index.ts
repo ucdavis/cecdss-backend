@@ -110,25 +110,33 @@ app.post('/initialProcessing', async (req, res) => {
       150000
     );
     // TODO: clean up, add substation type
-    // const substations: any[] = await db
-    //   .table('substations') // TODO: only select appropriate voltage
-    //   .whereBetween('latitude', [bounds[0].latitude, bounds[1].latitude])
-    //   .andWhereBetween('longitude', [bounds[0].longitude, bounds[1].longitude]);
-    // console.log(`found: ${substations.length} substations`);
-    // const nearestSubstation: any =
-    //   substations.length > 1
-    //     ? findNearest(
-    //         { latitude: params.facilityLat, longitude: params.facilityLng },
-    //         substations.map((substation) => {
-    //           return { latitude: substation.latitude, longitude: substation.longitude };
-    //         })
-    //       )
-    //     : substations[0];
+    const substations: any[] = await db
+      .table('substations') // TODO: only select appropriate voltage
+      .whereBetween('latitude', [bounds[0].latitude, bounds[1].latitude])
+      .andWhereBetween('longitude', [bounds[0].longitude, bounds[1].longitude]);
+    console.log(`found: ${substations.length} substations`);
+    const nearestSubstation: any =
+      substations.length > 1
+        ? findNearest(
+            { latitude: params.facilityLat, longitude: params.facilityLng },
+            substations.map((substation) => {
+              return {
+                name: substation.Substation_Name,
+                latitude: substation.latitude,
+                longitude: substation.longitude,
+              };
+            })
+          )
+        : substations[0];
+    console.log(
+      `nearestSubstation: {name: ${nearestSubstation.name}, longitude: ${nearestSubstation.longitude}, latitude: ${nearestSubstation.latitude}}`
+    );
     const distanceToNearestSubstationInM = getDistance(
       { latitude: params.facilityLat, longitude: params.facilityLng },
-      { latitude: 37.874746, longitude: -120.478517 }
-    ); // SS2234 Chinese Station (37.874746, -120.478517)
+      { latitude: nearestSubstation.latitude, longitude: nearestSubstation.longitude }
+    );
     const distanceToNearestSubstation = (distanceToNearestSubstationInM / 1000) * KM_TO_MILES;
+    console.log(`nearest substation is ${distanceToNearestSubstationInM} meters away`);
     if (distanceToNearestSubstation < 3) {
       params.transmission.LengthCategory = '< 3 miles';
     } else if (distanceToNearestSubstation >= 3 && distanceToNearestSubstation <= 10) {
@@ -136,17 +144,18 @@ app.post('/initialProcessing', async (req, res) => {
     } else {
       params.transmission.LengthCategory = '> 10 miles';
     }
+    console.log(`transmission.LengthCategory = ${params.transmission.LengthCategory}`);
     params.transmission.Miles = {
       ...params.transmission.Miles,
       Forested: distanceToNearestSubstation,
     };
-    console.log(`nearest substation is ${distanceToNearestSubstation} miles away`);
+    console.log(JSON.stringify(params.transmission));
     const transmissionResults = transmission(params.transmission);
-    console.log(`transmission cost: ${transmissionResults.AllCost}`);
+    console.log(`transmission cost: $${transmissionResults.AllCost}`);
 
     const teaInputs: any = { ...params.teaInputs };
     teaInputs.CapitalCost += transmissionResults.AllCost;
-    console.log(JSON.stringify(teaInputs));
+    // console.log(JSON.stringify(teaInputs));
     const teaOutput: OutputModGPO | OutputModCHP | OutputModGP = await getTeaOutputs(
       params.teaModel,
       teaInputs
@@ -160,7 +169,7 @@ app.post('/initialProcessing', async (req, res) => {
       teaResults: teaOutput,
       teaInputs: teaInputs,
       annualGeneration: annualGeneration,
-      nearestSubstation: 'SS2234 Chinese Station',
+      nearestSubstation: nearestSubstation.name,
       distanceToNearestSubstation: distanceToNearestSubstationInM / 1000, // km
     };
 
