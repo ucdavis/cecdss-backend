@@ -273,8 +273,8 @@ export const processClustersForYear = async (
 
       /*** run TEA ***/
       const cashFlow: CashFlow = params.cashFlow;
-      cashFlow.BiomassFuelCost = // update annual feedstock (biomass fuel) cost
-        results.totalHarvestCost + results.totalTransportationCost + results.totalMoveInCost;
+      // update annual feedstock (biomass fuel) cost
+      cashFlow.BiomassFuelCost = results.feedstockCostPerTon * results.totalDryFeedstock;
       const carbonIntensity = (lca.lifeCycleEmissions.CI * 1000) / 3.6; // convert from kg/kWh to g/MJ
       cashFlow.LcfsCreditRevenue = computeCarbonCredit(
         params.year,
