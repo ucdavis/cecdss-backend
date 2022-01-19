@@ -115,12 +115,17 @@ app.post('/initialProcessing', async (req, res) => {
       .whereBetween('latitude', [bounds[0].latitude, bounds[1].latitude])
       .andWhereBetween('longitude', [bounds[0].longitude, bounds[1].longitude]);
     console.log(`found: ${substations.length} substations`);
+
     const nearestSubstation: any =
       substations.length > 1
         ? findNearest(
             { latitude: params.facilityLat, longitude: params.facilityLng },
             substations.map((substation) => {
-              return { latitude: substation.latitude, longitude: substation.longitude };
+              return {
+                latitude: substation.latitude,
+                longitude: substation.longitude,
+                Substation_Name: substation.Substation_Name,
+              };
             })
           )
         : substations[0];
@@ -149,8 +154,9 @@ app.post('/initialProcessing', async (req, res) => {
       Mountain: distanceAveraged,
     };
     console.log(
-      `nearest substation: ${nearestSubstation.substation_name} is ${distanceToNearestSubstation} miles away`
+      `nearest substation: ${nearestSubstation.Substation_Name} is ${distanceToNearestSubstation} miles away`
     );
+
     const transmissionResults = transmission(params.transmission);
     console.log(`transmission cost: ${transmissionResults.AllCost}`);
 
