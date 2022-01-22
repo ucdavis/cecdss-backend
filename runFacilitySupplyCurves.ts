@@ -37,27 +37,28 @@ const osrm = new (OSRM as any)({
 console.log('connected to osrm');
 
 const run = async () => {
-  const facilityLat = process.env.FACILITY_LAT ? parseFloat(process.env.FACILITY_LAT) : 37.874369;
-  const facilityLng = process.env.FACILITY_LNG ? parseFloat(process.env.FACILITY_LNG) : -120.477336;
-  const facilityName = process.env.FACILITY_NAME || 'PUCS';
+  const facilityLat = process.env.FACILITY_LAT
+    ? parseFloat(process.env.FACILITY_LAT)
+    : 39.710361488650186;
+  const facilityLng = process.env.FACILITY_LNG
+    ? parseFloat(process.env.FACILITY_LNG)
+    : -120.21618958848077;
+  const facilityName = process.env.FACILITY_NAME || 'DefaultFacility';
 
-  // const bandsInMiles = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-  const bandsInMiles = [0, 100];
+  const bandsInMiles = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
   const treatments = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   const systems = [
-    // 'Ground-Based Mech WT',
-    // 'Ground-Based Manual WT',
-    // 'Ground-Based Manual Log',
+    'Ground-Based Mech WT',
+    'Ground-Based Manual WT',
+    'Ground-Based Manual Log',
     'Ground-Based CTL',
-    // 'Cable Manual WT/Log',
-    // 'Cable Manual WT',
-    // 'Cable Manual Log',
-    // 'Cable CTL',
-    // 'Helicopter Manual Log',
-    // 'Helicopter CTL',
+    'Cable Manual WT/Log',
+    'Cable Manual WT',
+    'Cable Manual Log',
+    'Cable CTL',
+    'Helicopter Manual Log',
+    'Helicopter CTL',
   ];
-  // const treatments = [4];
-  // const systems = ['Ground-Based Mech WT'];
 
   // nested loop over all systems and treatments
   for (const treatmentId of treatments) {
@@ -65,10 +66,10 @@ const run = async () => {
       console.log(`running for facility ${facilityName} at (${facilityLat}, ${facilityLng})`);
       console.log(`processing ${treatmentId}: ${harvestSystem}`);
 
-      // if (harvestSystem === 'Ground-Based CTL') {
-      //   console.log('skipping Ground-Based CTL because of move-in performance issues');
-      //   continue;
-      // }
+      if (harvestSystem === 'Ground-Based CTL') {
+        console.log('skipping Ground-Based CTL because of move-in performance issues');
+        continue;
+      }
 
       // determine csv file name and only run if file does not already exist
       let fileName = `${facilityName}_${treatmentId}_${harvestSystem}`;
@@ -76,7 +77,7 @@ const run = async () => {
       // replace non-alphanumeric characters with underscores
       fileName = fileName.replace(/[^a-z0-9]/gi, '_');
 
-      const fileWithDirectory = (process.env.CSV_DIR || './results/') + fileName + '.csv';
+      const fileWithDirectory = (process.env.CSV_DIR || './data/results/') + fileName + '.csv';
 
       // continue if filename is present on disk
       if (fs.existsSync(fileWithDirectory)) {
