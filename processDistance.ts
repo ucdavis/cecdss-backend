@@ -89,22 +89,21 @@ export const processClustersByDistance = async (
       console.log(`year:${year} selecting clusters...`);
       await selectClusters(osrm, params, clusters, results, lcaTotals, [], []);
 
-      const moveInDistance = 0;
+      let moveInDistance = 0;
 
-      // if (results.totalFeedstock > 0) {
-      //   console.log('move in distance required, calculating');
-      //   moveInDistance = await calculateMoveInDistance(
-      //     osrm,
-      //     results,
-      //     params.facilityLat,
-      //     params.facilityLng
-      //   );
-      // } else {
-      //   console.log(
-      //     `skipping updating move in distance, totalBiomass:
-      // ${results.totalFeedstock}, # of clusters: ${results.clusters.length}`
-      //   );
-      // }
+      if (results.totalFeedstock > 0) {
+        console.log('move in distance required, calculating');
+        moveInDistance = await calculateMoveInDistance(
+          osrm,
+          results,
+          params.facilityLat,
+          params.facilityLng
+        );
+      } else {
+        console.log(
+          `skipping updating move in distance, totalBiomass: ${results.totalFeedstock}, # of clusters: ${results.clusters.length}`
+        );
+      }
 
       const moveInOutputs = getMoveInOutputs({
         system: params.system,
@@ -251,30 +250,30 @@ const selectClusters = async (
           throw new Error(`Cluster biomass was: ${clusterFeedstock}, which is too low to use`);
         }
 
-        // const routeOptions: OSRM.RouteOptions = {
-        //   coordinates: [
-        //     [params.facilityLng, params.facilityLat],
-        //     [cluster.landing_lng, cluster.landing_lat],
-        //   ],
-        //   annotations: ['duration', 'distance'],
-        // };
+        const routeOptions: OSRM.RouteOptions = {
+          coordinates: [
+            [params.facilityLng, params.facilityLat],
+            [cluster.landing_lng, cluster.landing_lat],
+          ],
+          annotations: ['duration', 'distance'],
+        };
 
-        // // currently distance is the osrm generated distance between each landing site and the facility location
-        // const route: any = await getRouteDistanceAndDuration(osrm, routeOptions);
-        // // number of trips is how many truckloads it takes to transport biomass
-        // const numberOfTripsForTransportation = Math.ceil(clusterFeedstock / FULL_TRUCK_PAYLOAD);
-        // // multiply the osrm road distance by number of trips, transportation eq doubles it for round trip
-        // const distance = route.distance / 1000; // m to km
-        // const duration = route.duration / 3600; // seconds to hours
-        // const transportationCostTotal = getTransportationCostTotal(
-        //   clusterFeedstock,
-        //   distance,
-        //   duration,
-        //   params.dieselFuelPrice,
-        //   params.wageTruckDriver,
-        //   params.driverBenefits,
-        //   params.oilCost
-        // );
+        // currently distance is the osrm generated distance between each landing site and the facility location
+        const route: any = await getRouteDistanceAndDuration(osrm, routeOptions);
+        // number of trips is how many truckloads it takes to transport biomass
+        const numberOfTripsForTransportation = Math.ceil(clusterFeedstock / FULL_TRUCK_PAYLOAD);
+        // multiply the osrm road distance by number of trips, transportation eq doubles it for round trip
+        const distance = route.distance / 1000; // m to km
+        const duration = route.duration / 3600; // seconds to hours
+        const transportationCostTotal = getTransportationCostTotal(
+          clusterFeedstock,
+          distance,
+          duration,
+          params.dieselFuelPrice,
+          params.wageTruckDriver,
+          params.driverBenefits,
+          params.oilCost
+        );
 
         results.totalFeedstock += clusterFeedstock;
         results.totalHarvestCost += frcsResult.residual.costPerAcre * cluster.area;
@@ -283,20 +282,20 @@ const selectClusters = async (
           (frcsResult.total.costPerAcre - frcsResult.residual.costPerAcre) * cluster.area;
 
         results.totalArea += cluster.area;
-        // results.totalTransportationCost += transportationCostTotal;
+        results.totalTransportationCost += transportationCostTotal;
         lcaTotals.totalDiesel += frcsResult.residual.dieselPerAcre * cluster.area;
         lcaTotals.totalGasoline += frcsResult.residual.gasolinePerAcre * cluster.area;
         lcaTotals.totalJetFuel += frcsResult.residual.jetFuelPerAcre * cluster.area;
-        // lcaTotals.totalTransportationDistance += distance * 2 * numberOfTripsForTransportation;
+        lcaTotals.totalTransportationDistance += distance * 2 * numberOfTripsForTransportation;
 
         results.clusters.push({
           cluster_no: cluster.cluster_no,
           area: cluster.area,
           biomass: clusterFeedstock,
-          distance: 0,
+          distance: distance,
           combinedCost: frcsResult.total.costPerAcre * cluster.area,
           residueCost: frcsResult.residual.costPerAcre * cluster.area,
-          transportationCost: 0,
+          transportationCost: transportationCostTotal,
           frcsResult: frcsResult,
           center_lat: cluster.center_lat,
           center_lng: cluster.center_lng,
