@@ -43,7 +43,7 @@ if (process.env.APPINSIGHTS_INSTRUMENTATIONKEY) {
   setupAppInsights();
 }
 
-const apiTimeout = 60 * 5 * 1000; // 5 minutes
+const apiTimeout = 60 * 15 * 1000; // 5 minutes
 
 const app = express();
 

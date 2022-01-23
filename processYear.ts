@@ -105,54 +105,64 @@ export const processClustersForYear = async (
       // feedstock and biomassTarget are both in short tons
       // for each cluster, run frcs and transportation model
       const candidateIds: string[] = [];
-      while (results.candidateTotalFeedstock < extraBiomassTarget) {
-        if (
-          // TODO: might need a better terminating condition
-          results.radius > 40000 &&
-          results.clusters.length > 3800 &&
-          results.candidateTotalFeedstock / biomassTarget < 0.1
-        ) {
-          console.log('radius large & not enough biomass');
-          break;
+      // while (results.candidateTotalFeedstock < extraBiomassTarget) {
+      //   if (
+      //     // TODO: might need a better terminating condition
+      //     results.radius > 40000 &&
+      //     results.clusters.length > 3800 &&
+      //     results.candidateTotalFeedstock / biomassTarget < 0.1
+      //   ) {
+      //     console.log('radius large & not enough biomass');
+      //     break;
+      //   }
+
+      //   results.radius += 1000;
+      //   console.log(
+      //     `year:${year} getting clusters from db, radius: ${
+      //       results.radius
+      //     }, candidateTotalFeedstock: ${
+      //       results.candidateTotalFeedstock
+      //     }, extraBiomassTarget: ${extraBiomassTarget}, ${
+      //       results.candidateTotalFeedstock < extraBiomassTarget
+      //     } ...`
+      //   );
+
+      // get the clusters within the radius from the database, excluding used and error cluters
+      const clusters: ProcessedTreatedCluster[] = await getClusters(
+        db,
+        params,
+        year,
+        usedIds,
+        errorIds,
+        results.radius,
+        candidateIds
+      );
+      console.log(`year:${year} clusters found: ${clusters.length}`);
+
+      // process clusters to compute feedstock amount, harvest cost, transport cost, etc.for each cluster
+      // add harvestable clusters to harvestableClusters
+      // add Id of non-harvestable clusters to errorIds
+      console.log(`year:${year} processing clusters...`);
+      await processClusters(
+        osrm,
+        params,
+        clusters,
+        results,
+        errorIds,
+        harvestableClusters,
+        candidateIds
+      );
+      // } // end of the while loop
+
+      for (const c of harvestableClusters) {
+        if (c.cluster_no === '426897') {
+          console.log(
+            `cluster_no 426897 exists in harvestableClusters and its feedstock cost = ${
+              (c.feedstockHarvestCost + c.transportationCost) / c.feedstock
+            }`
+          );
         }
-
-        results.radius += 1000;
-        console.log(
-          `year:${year} getting clusters from db, radius: ${
-            results.radius
-          }, candidateTotalFeedstock: ${
-            results.candidateTotalFeedstock
-          }, extraBiomassTarget: ${extraBiomassTarget}, ${
-            results.candidateTotalFeedstock < extraBiomassTarget
-          } ...`
-        );
-
-        // get the clusters within the radius from the database, excluding used and error cluters
-        const clusters: ProcessedTreatedCluster[] = await getClusters(
-          db,
-          params,
-          year,
-          usedIds,
-          errorIds,
-          results.radius,
-          candidateIds
-        );
-        console.log(`year:${year} clusters found: ${clusters.length}`);
-
-        // process clusters to compute feedstock amount, harvest cost, transport cost, etc.for each cluster
-        // add harvestable clusters to harvestableClusters
-        // add Id of non-harvestable clusters to errorIds
-        console.log(`year:${year} processing clusters...`);
-        await processClusters(
-          osrm,
-          params,
-          clusters,
-          results,
-          errorIds,
-          harvestableClusters,
-          candidateIds
-        );
-      } // end of the while loop
+      }
 
       console.log(`year:${year} sorting candidate clusters by unit feedstock cost...`);
       const sortedClusters = harvestableClusters.sort(
@@ -160,29 +170,41 @@ export const processClustersForYear = async (
           (a.feedstockHarvestCost + a.transportationCost) / a.feedstock -
           (b.feedstockHarvestCost + b.transportationCost) / b.feedstock
       );
+      const firstCluster = sortedClusters[0];
+      console.log(
+        `The sortedClusters 1st cluster_no ${firstCluster.cluster_no}: ` +
+          (firstCluster.feedstockHarvestCost + firstCluster.transportationCost) /
+            firstCluster.feedstock
+      );
+      console.log(
+        `The harvestableClusters 1st cluster_no ${harvestableClusters[0].cluster_no}: ` +
+          (harvestableClusters[0].feedstockHarvestCost +
+            harvestableClusters[0].transportationCost) /
+            harvestableClusters[0].feedstock
+      );
+
+      if (year === params.firstYear) {
+        // determine csv file name and only run if file does not already exist
+        let fileName = `${year}_test_full2`;
+
+        // replace non-alphanumeric characters with underscores
+        fileName = fileName.replace(/[^a-z0-9]/gi, '_');
+
+        const fileWithDirectory = (process.env.CSV_DIR || './results/') + fileName + '.csv';
+
+        let fileContents = 'cluster_no,feedstockCost,feedstockAmount\n';
+        sortedClusters.slice(0, 100).forEach((c) => {
+          fileContents += `${c.cluster_no}, ${
+            (c.feedstockHarvestCost + c.transportationCost) / c.feedstock
+          },${c.feedstock}\n`;
+        });
+
+        fs.writeFileSync(fileWithDirectory, fileContents);
+      }
 
       // select from the sorted harvestable clusters the ones that can supply one-year feedstock (biomassTarget)
       console.log(`year:${year} selecting clusters...`);
       await selectClusters(biomassTarget, sortedClusters, results, lcaTotals, usedIds);
-
-      // if (year === params.firstYear) {
-      //   // determine csv file name and only run if file does not already exist
-      //   let fileName = `${year}_test`;
-
-      //   // replace non-alphanumeric characters with underscores
-      //   fileName = fileName.replace(/[^a-z0-9]/gi, '_');
-
-      //   const fileWithDirectory = (process.env.CSV_DIR || './results/') + fileName + '.csv';
-
-      //   let fileContents = 'cluster_no,feedstockCost,feedstockAmount\n';
-      //   sortedClusters.slice(0, 100).forEach((c) => {
-      //     fileContents += `${c.cluster_no}, ${
-      //       (c.feedstockHarvestCost + c.transportationCost) / c.feedstock
-      //     },${c.feedstock}\n`;
-      //   });
-
-      //   fs.writeFileSync(fileWithDirectory, fileContents);
-      // }
 
       results.numberOfClusters = results.clusterNumbers.length;
       console.log(
@@ -327,20 +349,21 @@ const getClusters = async (
       .where({ treatmentid: params.treatmentid })
       .where({ year: 2016 }) // TODO: filter by actual year if we get data for multiple years
       .whereIn('land_use', ['private', 'USDA Forest Service'])
-      .whereNotIn('cluster_no', [...usedIds, ...errorIds, ...candidateIds])
-      .whereBetween('center_lat', [bounds[0].latitude, bounds[1].latitude])
-      .andWhereBetween('center_lng', [bounds[0].longitude, bounds[1].longitude]);
+      .whereNotIn('cluster_no', [...usedIds, ...errorIds, ...candidateIds]);
+    //   .whereBetween('center_lat', [bounds[0].latitude, bounds[1].latitude])
+    //   .andWhereBetween('center_lng', [bounds[0].longitude, bounds[1].longitude]);
 
-    // only include those clusters that are inside a circular radius
-    const clustersInCircle = clusters.filter(
-      (c) =>
-        getDistance(
-          { latitude: params.lat, longitude: params.lng },
-          { latitude: c.center_lat, longitude: c.center_lng }
-        ) <= radius
-    );
+    // // only include those clusters that are inside a circular radius
+    // const clustersInCircle = clusters.filter(
+    //   (c) =>
+    //     getDistance(
+    //       { latitude: params.lat, longitude: params.lng },
+    //       { latitude: c.center_lat, longitude: c.center_lng }
+    //     ) <= radius
+    // );
 
-    res(clustersInCircle);
+    // res(clustersInCircle);
+    res(clusters);
   });
 };
 
@@ -446,6 +469,18 @@ const processCluster = async (
     cluster.transportationDistance = distance * 2 * numberOfTripsForTransportation;
     harvestableClusters.push(cluster);
     candidateIds.push(cluster.cluster_no);
+    if (cluster.cluster_no === '426897') {
+      console.log(
+        'cluster_no 426897: ' +
+          (cluster.feedstockHarvestCost + cluster.transportationCost) / cluster.feedstock
+      );
+    }
+    if (cluster.cluster_no === '146555') {
+      console.log(
+        'cluster_no 146555: ' +
+          (cluster.feedstockHarvestCost + cluster.transportationCost) / cluster.feedstock
+      );
+    }
   } catch (err: any) {
     // swallow errors frcs throws and push the error message instead
     results.errorClusters.push({
