@@ -183,24 +183,24 @@ export const processClustersForYear = async (
             harvestableClusters[0].feedstock
       );
 
-      if (year === params.firstYear) {
-        // determine csv file name and only run if file does not already exist
-        let fileName = `${year}_test_full2`;
+      // if (year === params.firstYear) {
+      //   // determine csv file name and only run if file does not already exist
+      //   let fileName = `${year}_test_full2`;
 
-        // replace non-alphanumeric characters with underscores
-        fileName = fileName.replace(/[^a-z0-9]/gi, '_');
+      //   // replace non-alphanumeric characters with underscores
+      //   fileName = fileName.replace(/[^a-z0-9]/gi, '_');
 
-        const fileWithDirectory = (process.env.CSV_DIR || './results/') + fileName + '.csv';
+      //   const fileWithDirectory = (process.env.CSV_DIR || './results/') + fileName + '.csv';
 
-        let fileContents = 'cluster_no,feedstockCost,feedstockAmount\n';
-        sortedClusters.slice(0, 100).forEach((c) => {
-          fileContents += `${c.cluster_no}, ${
-            (c.feedstockHarvestCost + c.transportationCost) / c.feedstock
-          },${c.feedstock}\n`;
-        });
+      //   let fileContents = 'cluster_no,feedstockCost,feedstockAmount\n';
+      //   sortedClusters.slice(0, 100).forEach((c) => {
+      //     fileContents += `${c.cluster_no}, ${
+      //       (c.feedstockHarvestCost + c.transportationCost) / c.feedstock
+      //     },${c.feedstock}\n`;
+      //   });
 
-        fs.writeFileSync(fileWithDirectory, fileContents);
-      }
+      //   fs.writeFileSync(fileWithDirectory, fileContents);
+      // }
 
       // select from the sorted harvestable clusters the ones that can supply one-year feedstock (biomassTarget)
       console.log(`year:${year} selecting clusters...`);
