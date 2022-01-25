@@ -403,9 +403,9 @@ const processCluster = async (
     const clusterFeedstock = frcsResult.residual.yieldPerAcre * cluster.area; // green tons
     const clusterCoproduct =
       (frcsResult.total.yieldPerAcre - frcsResult.residual.yieldPerAcre) * cluster.area; // green tons
-    // if (clusterFeedstock < 1) {
-    //   throw new Error(`Cluster biomass was: ${clusterFeedstock}, which is too low to use`);
-    // }
+    if (clusterFeedstock === 0) {
+      throw new Error(`Cluster feedstock was: ${clusterFeedstock}`);
+    }
 
     const routeOptions: OSRM.RouteOptions = {
       coordinates: [
