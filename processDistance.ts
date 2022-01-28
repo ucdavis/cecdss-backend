@@ -107,7 +107,7 @@ export const processClustersByDistance = async (
 
       const moveInOutputs = getMoveInOutputs({
         system: params.system,
-        moveInDistance: moveInDistance,
+        moveInDistance: (moveInDistance / 1000) * KM_TO_MILES,
         dieselFuelPrice: params.dieselFuelPrice,
         isBiomassSalvage: params.treatmentid === 10 ? true : false, // true if treatment is biomass salvage
         wageFaller: params.wageFaller,

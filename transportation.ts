@@ -110,7 +110,7 @@ export const getMoveInTrip = (
 
       const results: YearlyTripResults = {
         trips: result.trips,
-        distance: (osrmDistance / 1000) * KM_TO_MILES,
+        distance: osrmDistance, // in meters
       };
 
       resolve(results);
