@@ -190,7 +190,6 @@ export const processClustersForYear = async (
       );
 
       /*** move-in cost calculation ***/
-      // we only calculate the move in distance if it is applicable for this type of treatment & system
       let moveInDistance = 0;
       if (results.totalFeedstock > 0) {
         console.log('move in distance required, calculating');
@@ -199,7 +198,7 @@ export const processClustersForYear = async (
           results,
           params.facilityLat,
           params.facilityLng
-        );
+        ); // in meters
       } else {
         console.log(
           `skipping updating move in distance, totalBiomass: ${results.totalFeedstock}, # of clusters: ${results.clusters.length}`
@@ -208,7 +207,7 @@ export const processClustersForYear = async (
 
       const moveInOutputs = getMoveInOutputs({
         system: params.system,
-        moveInDistance: moveInDistance,
+        moveInDistance: (moveInDistance / 1000) * KM_TO_MILES,
         dieselFuelPrice: params.dieselFuelPrice,
         isBiomassSalvage: params.treatmentid === 10 ? true : false, // true if treatment is biomass salvage
         wageFaller: params.wageFaller,
@@ -270,6 +269,8 @@ export const processClustersForYear = async (
         results.harvestCostPerDryTon +
         results.transportationCostPerDryTon +
         results.moveInCostPerDryTon;
+      console.log(`totalDryFeedstock (BDMT): ${results.totalDryFeedstock}`);
+      console.log(`movein cost ($/BDMT): ${results.moveInCostPerDryTon}`);
 
       /*** run TEA ***/
       const cashFlow: CashFlow = params.cashFlow;
