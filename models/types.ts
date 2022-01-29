@@ -1,4 +1,5 @@
 import { FrcsOutputs } from '@ucdavis/frcs/out/model';
+import { LcaInputs, LcaOutputs } from '@ucdavis/lca/model';
 import {
   InputModCHP,
   InputModGP,
@@ -14,7 +15,6 @@ import {
   OutputModGPO,
 } from '@ucdavis/tea/output.model';
 import OSRM from 'osrm';
-import { LCAresults } from './lcaModels';
 
 export interface RequestParams {
   facilityLat: number;
@@ -151,7 +151,7 @@ export interface YearlyTripResults {
 export interface YearlyResult {
   tripGeometries: Geometry[];
   year: number;
-  lcaResults?: LCAresults;
+  lcaResults: LCAresults;
   totalArea: number;
   candidateTotalFeedstock: number;
   totalFeedstock: number; // total biomass from frcs residue output
@@ -233,6 +233,10 @@ export interface Bounds {
 export interface Geometry {
   coodinates: number[][];
   type: string;
+}
+
+export interface LCAresults extends LcaOutputs {
+  inputs: LcaInputs;
 }
 
 export interface LCATotals {

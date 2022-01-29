@@ -18,11 +18,11 @@ import OSRM from 'osrm';
 import { performance } from 'perf_hooks';
 import { getEquipmentPrice } from './equipment';
 import { trackMetric } from './logging';
-import { LCAresults } from './models/lcaModels';
 import { ProcessedTreatedCluster } from './models/ProcessedTreatedCluster';
 import {
   ClusterErrorResult,
   ClusterResult,
+  LCAresults,
   LCATotals,
   RequestParams,
   TreatedClustersInfo,
@@ -82,6 +82,50 @@ export const processClustersForYear = async (
         geoJson: [],
         errorGeoJson: [],
         cashFlow: {},
+        lcaResults: {
+          lifeCycleEmissions: {
+            CO2: 0,
+            CH4: 0,
+            N2O: 0,
+            CO: 0,
+            NOx: 0,
+            PM10: 0,
+            PM25: 0,
+            SOx: 0,
+            VOC: 0,
+            CI: 0,
+          },
+          lifeCycleImpacts: {
+            global_warming_air: 0,
+            acidification_air: 0,
+            hh_particulate_air: 0,
+            eutrophication_air: 0,
+            smog_air: 0,
+          },
+          lifeStageCO2: {
+            harvest: 0,
+            transport: 0,
+            conversion: 0,
+            construction: 0,
+            equipment: 0,
+          },
+          lifeStageGWP: {
+            harvest: 0,
+            transport: 0,
+            conversion: 0,
+            construction: 0,
+            equipment: 0,
+          },
+          inputs: {
+            technology: '',
+            diesel: 0,
+            gasoline: 0,
+            jetfuel: 0,
+            distance: 0,
+            construction: 0,
+            equipment: 0,
+          },
+        },
       };
 
       const lcaTotals: LCATotals = {
@@ -517,8 +561,14 @@ const selectClusters = async (
 };
 
 export const runLca = async (inputs: LcaInputs) => {
-  const results: LCAresults = await lifeCycleAnalysis(inputs);
-  results.inputs = inputs;
+  const lcaOutputs = await lifeCycleAnalysis(inputs);
+  const results: LCAresults = {
+    lifeCycleEmissions: lcaOutputs.lifeCycleEmissions,
+    lifeCycleImpacts: lcaOutputs.lifeCycleImpacts,
+    lifeStageCO2: lcaOutputs.lifeStageCO2,
+    lifeStageGWP: lcaOutputs.lifeStageGWP,
+    inputs: inputs,
+  };
   // convert US units to SI units: gallon to liter, mile to km
   const GALLON_TO_LITER = 3.78541;
   results.inputs.diesel *= GALLON_TO_LITER; // L/kWh
