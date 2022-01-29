@@ -13,9 +13,8 @@ import {
 } from '@ucdavis/tea/utility';
 import { Knex } from 'knex';
 import OSRM from 'osrm';
-import { LCAresults } from './models/lcaModels';
 import { TreatedCluster } from './models/treatedcluster';
-import { LCATotals, RequestByDistanceParams, YearlyResult } from './models/types';
+import { LCAresults, LCATotals, RequestByDistanceParams, YearlyResult } from './models/types';
 import { runFrcsOnCluster } from './runFrcs';
 import {
   calculateMoveInDistance,

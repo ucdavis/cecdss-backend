@@ -15,11 +15,11 @@ import swaggerUi from 'swagger-ui-express';
 
 import { getFrcsInputsTest } from './frcsInputCalculations';
 import { setupAppInsights, trackMetric } from './logging';
-import { LCAresults } from './models/lcaModels';
 import { TreatedCluster } from './models/treatedcluster';
 import {
   AllYearsResults,
   Geometry,
+  LCAresults,
   RequestByDistanceParams,
   RequestByRoutesParams,
   RequestParams,

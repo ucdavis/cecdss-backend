@@ -18,11 +18,11 @@ import OSRM from 'osrm';
 import { performance } from 'perf_hooks';
 import { getEquipmentPrice } from './equipment';
 import { trackMetric } from './logging';
-import { LCAresults } from './models/lcaModels';
 import { ProcessedTreatedCluster } from './models/ProcessedTreatedCluster';
 import {
   ClusterErrorResult,
   ClusterResult,
+  LCAresults,
   LCATotals,
   RequestParams,
   TreatedClustersInfo,
