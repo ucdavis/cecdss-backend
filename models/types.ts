@@ -151,7 +151,7 @@ export interface YearlyTripResults {
 export interface YearlyResult {
   tripGeometries: Geometry[];
   year: number;
-  lcaResults?: LCAresults;
+  lcaResults: LCAresults;
   totalArea: number;
   candidateTotalFeedstock: number;
   totalFeedstock: number; // total biomass from frcs residue output
@@ -236,7 +236,7 @@ export interface Geometry {
 }
 
 export interface LCAresults extends LcaOutputs {
-  inputs?: LcaInputs;
+  inputs: LcaInputs;
 }
 
 export interface LCATotals {
