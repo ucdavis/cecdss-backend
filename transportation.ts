@@ -6,6 +6,7 @@ import { performance } from 'perf_hooks';
 const MILES_PER_GALLON = 6;
 export const KM_TO_MILES = 0.621371;
 export const FULL_TRUCK_PAYLOAD = 25; // FRCS assumption (in green tons)
+export const TRUCK_OWNERSHIP_COST = 13.1; // $/h
 
 export const getTransportationCostTotal = (
   feedstockAmount: number,
@@ -67,7 +68,9 @@ export const getTransportationCostPerGT = (
 
   const oil = oilCost * miles;
 
-  let cost = oil + fuel + labor;
+  const truckOwnership = TRUCK_OWNERSHIP_COST * hours;
+
+  let cost = oil + fuel + labor + truckOwnership;
 
   cost = cost / payload;
 
