@@ -294,7 +294,7 @@ export const processClustersForYear = async (
             ? ((params.capitalCost / CPI2021) * CPI2002) / 1000 / params.annualGeneration
             : 0, // thousand$/kWh, assume the first year is 2016 for now
         equipment:
-          getEquipmentPrice(params.system, params.year - params.firstYear) /
+          getEquipmentPrice(params.treatmentid, params.system, params.year - params.firstYear) /
           1000 /
           params.annualGeneration, // thousand$/kWh
       };
