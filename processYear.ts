@@ -34,7 +34,12 @@ import {
   FULL_TRUCK_PAYLOAD,
   getTransportationCostTotal,
   KM_TO_MILES,
+  TRUCK_OWNERSHIP_COST,
 } from './transportation';
+
+const unloadingTime = 0.25; // assume the self-unloading process takes 15 minutes (0.25 h)
+const unloadingDieselUsageRate = 2; // assume fuel consumption rate is 2 gal/h
+const unloadingDieselUsagePerTruck = unloadingDieselUsageRate * unloadingTime;
 
 export const processClustersForYear = async (
   db: Knex,
@@ -268,6 +273,12 @@ export const processClustersForYear = async (
       results.totalMoveInCost = moveInOutputs.residualCost;
       lcaTotals.totalDiesel += moveInOutputs.residualDiesel;
 
+      // unloading ($ / dry metric ton)
+      const unloadingCostPerDryTon =
+        (((1 + params.laborBenefits / 100) * params.wageTruckDriver + TRUCK_OWNERSHIP_COST) *
+          unloadingTime) /
+        ((FULL_TRUCK_PAYLOAD * (1 - moistureContentPercentage)) / TONNE_TO_TON);
+
       const CPI2002 = 179.9;
       const CPI2021 = 270.97;
 
@@ -293,11 +304,6 @@ export const processClustersForYear = async (
       const lca = await runLca(lcaInputs);
       console.log('lifeCycleEmissions = ', lca.lifeCycleEmissions);
       results.lcaResults = lca;
-
-      // unloading
-      const unloadingCostPerDryTon =
-        (0.16667 * (44.31 + 1.6 * params.wageTruckDriver) + 0.2 * 1.67 * params.wageTruckDriver) /
-        (FULL_TRUCK_PAYLOAD * (1 - moistureContentPercentage));
 
       // calculate dry values ($ / dry metric ton)
       results.totalDryFeedstock =
@@ -484,7 +490,9 @@ const processCluster = async (
       (frcsResult.total.costPerAcre - frcsResult.residual.costPerAcre) * cluster.area;
     cluster.frcsResult = frcsResult;
     cluster.transportationCost = transportationCostTotal;
-    cluster.diesel = frcsResult.residual.dieselPerAcre * cluster.area;
+    cluster.diesel =
+      frcsResult.residual.dieselPerAcre * cluster.area +
+      unloadingDieselUsagePerTruck * numberOfTripsForTransportation;
     cluster.gasoline = frcsResult.residual.gasolinePerAcre * cluster.area;
     cluster.juetFuel = frcsResult.residual.jetFuelPerAcre * cluster.area;
     cluster.distance = distance;

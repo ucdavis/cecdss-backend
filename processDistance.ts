@@ -21,7 +21,12 @@ import {
   FULL_TRUCK_PAYLOAD,
   getTransportationCostTotal,
   KM_TO_MILES,
+  TRUCK_OWNERSHIP_COST,
 } from './transportation';
+
+const unloadingTime = 0.25; // assume the self-unloading process takes 15 minutes (0.25 h)
+const unloadingDieselUsageRate = 2; // assume fuel consumption rate is 2 gal/h
+const unloadingDieselUsagePerTruck = unloadingDieselUsageRate * unloadingTime;
 
 export const processClustersByDistance = async (
   db: Knex,
@@ -186,10 +191,11 @@ export const processClustersByDistance = async (
       const moistureContentPercentage = params.moistureContent / 100.0;
       const TONNE_TO_TON = 1.10231; // 1 metric ton = 1.10231 short tons
 
-      // unloading
+      // unloading ($ / dry metric ton)
       const unloadingCostPerDryTon =
-        (0.16667 * (44.31 + 1.6 * params.wageTruckDriver) + 0.2 * 1.67 * params.wageTruckDriver) /
-        (FULL_TRUCK_PAYLOAD * (1 - moistureContentPercentage));
+        (((1 + params.laborBenefits / 100) * params.wageTruckDriver + TRUCK_OWNERSHIP_COST) *
+          unloadingTime) /
+        ((FULL_TRUCK_PAYLOAD * (1 - moistureContentPercentage)) / TONNE_TO_TON);
 
       // calculate dry values ($ / dry metric ton)
       results.totalDryFeedstock =
@@ -326,7 +332,9 @@ const selectClusters = async (
 
         results.totalArea += cluster.area;
         results.totalTransportationCost += transportationCostTotal;
-        lcaTotals.totalDiesel += frcsResult.residual.dieselPerAcre * cluster.area;
+        lcaTotals.totalDiesel +=
+          frcsResult.residual.dieselPerAcre * cluster.area +
+          unloadingDieselUsagePerTruck * numberOfTripsForTransportation;
         lcaTotals.totalGasoline += frcsResult.residual.gasolinePerAcre * cluster.area;
         lcaTotals.totalJetFuel += frcsResult.residual.jetFuelPerAcre * cluster.area;
         lcaTotals.totalTransportationDistance += distance * 2 * numberOfTripsForTransportation;
