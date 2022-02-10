@@ -623,13 +623,19 @@ const getGeoJson = async (
       .table('treatedclustersInfo')
       .whereIn('cluster_no', [...clusterNumbers])
       .orderBy('cluster_no', 'asc');
-
+    const clustersCopy = [...clusters];
+    clustersCopy.sort((a, b) => {
+      return Number(a.cluster_no) - Number(b.cluster_no);
+    });
     const features = clusterGeoJson.map((treatedClusterInfo, index) => {
-      const clusterDetail = clusters.find((c) => c.cluster_no === treatedClusterInfo.cluster_no);
+      const i =
+        treatedClusterInfo.cluster_no === clustersCopy[index].cluster_no
+          ? index
+          : clustersCopy.findIndex((a) => a.cluster_no === treatedClusterInfo.cluster_no);
       return {
         ...treatedClusterInfo.geography,
         properties: {
-          ...clusterDetail,
+          ...clustersCopy[i],
         },
       };
     });
@@ -647,13 +653,19 @@ const getErrorGeoJson = async (
       .table('treatedclustersInfo')
       .whereIn('cluster_no', [...clusterNumbers])
       .orderBy('cluster_no', 'asc');
-
+    const clustersCopy = [...clusters];
+    clustersCopy.sort((a, b) => {
+      return Number(a.cluster_no) - Number(b.cluster_no);
+    });
     const features = clusterGeoJson.map((treatedClusterInfo, index) => {
-      const clusterDetail = clusters.find((c) => c.cluster_no === treatedClusterInfo.cluster_no);
+      const i =
+        treatedClusterInfo.cluster_no === clustersCopy[index].cluster_no
+          ? index
+          : clustersCopy.findIndex((a) => a.cluster_no === treatedClusterInfo.cluster_no);
       return {
         ...treatedClusterInfo.geography,
         properties: {
-          ...clusterDetail,
+          ...clustersCopy[i],
         },
       };
     });
