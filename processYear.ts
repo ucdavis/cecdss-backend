@@ -635,7 +635,7 @@ const getGeoJson = async (
       return {
         ...treatedClusterInfo.geography,
         properties: {
-          ...clusters[i],
+          ...clustersCopy[i],
         },
       };
     });
@@ -665,7 +665,7 @@ const getErrorGeoJson = async (
       return {
         ...treatedClusterInfo.geography,
         properties: {
-          ...clusters[i],
+          ...clustersCopy[i],
         },
       };
     });
