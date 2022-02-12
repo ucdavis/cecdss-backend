@@ -6,7 +6,6 @@ import { CashFlow, OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/
 import {
   computeCarbonCredit,
   computeEnergyRevenueRequired,
-  computeEnergyRevenueRequiredPW,
   gasificationPower,
   genericCombinedHeatPower,
   genericPowerOnly,
@@ -102,7 +101,8 @@ export const processClustersByDistance = async (
           },
           inputs: {
             technology: '',
-            diesel: 0,
+            harvestDiesel: 0,
+            unloadDiesel: 0,
             gasoline: 0,
             jetfuel: 0,
             distance: 0,
@@ -113,7 +113,8 @@ export const processClustersByDistance = async (
       };
 
       const lcaTotals: LCATotals = {
-        totalDiesel: 0,
+        totalHarvestDiesel: 0,
+        totalUnloadDiesel: 0,
         totalGasoline: 0,
         totalJetFuel: 0,
         totalTransportationDistance: 0,
@@ -170,14 +171,15 @@ export const processClustersByDistance = async (
 
       results.totalMoveInDistance = moveInDistance;
       results.totalMoveInCost = moveInOutputs.residualCost;
-      lcaTotals.totalDiesel += moveInOutputs.residualDiesel;
+      lcaTotals.totalHarvestDiesel += moveInOutputs.residualDiesel;
 
       results.numberOfClusters = results.clusterNumbers.length;
 
       /*** run LCA ***/
       const lcaInputs: LcaInputs = {
         technology: params.teaModel,
-        diesel: lcaTotals.totalDiesel / params.annualGeneration, // gal/kWh
+        harvestDiesel: lcaTotals.totalHarvestDiesel / params.annualGeneration, // gal/kWh
+        unloadDiesel: lcaTotals.totalUnloadDiesel / params.annualGeneration, // gal/kWh
         gasoline: lcaTotals.totalGasoline / params.annualGeneration, // gal/kWh
         jetfuel: lcaTotals.totalJetFuel / params.annualGeneration, // gal/kWh
         distance: (lcaTotals.totalTransportationDistance * KM_TO_MILES) / params.annualGeneration, // miles/kWh
@@ -332,8 +334,8 @@ const selectClusters = async (
 
         results.totalArea += cluster.area;
         results.totalTransportationCost += transportationCostTotal;
-        lcaTotals.totalDiesel +=
-          frcsResult.residual.dieselPerAcre * cluster.area +
+        lcaTotals.totalHarvestDiesel += frcsResult.residual.dieselPerAcre * cluster.area;
+        lcaTotals.totalUnloadDiesel +=
           unloadingDieselUsagePerTruck * numberOfTripsForTransportation;
         lcaTotals.totalGasoline += frcsResult.residual.gasolinePerAcre * cluster.area;
         lcaTotals.totalJetFuel += frcsResult.residual.jetFuelPerAcre * cluster.area;
@@ -389,7 +391,8 @@ export const runLca = async (inputs: LcaInputs) => {
   };
   // convert US units to SI units: gallon to liter, mile to km
   const GALLON_TO_LITER = 3.78541;
-  results.inputs.diesel *= GALLON_TO_LITER; // L/kWh
+  results.inputs.harvestDiesel *= GALLON_TO_LITER; // L/kWh
+  results.inputs.unloadDiesel *= GALLON_TO_LITER; // L/kWh
   results.inputs.gasoline *= GALLON_TO_LITER; // L/kWh
   results.inputs.jetfuel *= GALLON_TO_LITER; // L/kWh
   results.inputs.distance /= KM_TO_MILES; // km/kWh
