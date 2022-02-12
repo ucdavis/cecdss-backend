@@ -240,7 +240,8 @@ export interface LCAresults extends LcaOutputs {
 }
 
 export interface LCATotals {
-  totalDiesel: number;
+  totalHarvestDiesel: number;
+  totalUnloadDiesel: number;
   totalGasoline: number;
   totalJetFuel: number;
   totalTransportationDistance: number;

@@ -8,7 +8,8 @@ export interface ProcessedTreatedCluster extends TreatedCluster {
   feedstockHarvestCost: number;
   coproductHarvestCost: number;
   transportationCost: number;
-  diesel: number;
+  harvestDiesel: number;
+  unloadDiesel: number;
   gasoline: number;
   juetFuel: number;
   distance: number; // one-way transportation distance
