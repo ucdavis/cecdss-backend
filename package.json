@@ -29,7 +29,7 @@
     "geocluster": "^0.1.1",
     "geolib": "^3.3.3",
     "isomorphic-fetch": "^3.0.0",
-    "knex": "^0.95.14",
+    "knex": "^2.4.0",
     "osrm": "5.25.0",
     "pg": "^8.7.1",
     "swagger-ui-express": "^4.1.6"
