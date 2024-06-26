@@ -8,7 +8,7 @@ import express from 'express';
 import { findNearest, getBoundsOfDistance, getDistance } from 'geolib';
 import _fetch from 'isomorphic-fetch';
 import knex from 'knex';
-import OSRM from 'osrm';
+import OSRM from '@project-osrm/osrm';
 import { performance } from 'perf_hooks';
 import pg from 'pg';
 import swaggerUi from 'swagger-ui-express';

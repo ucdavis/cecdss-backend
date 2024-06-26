@@ -11,7 +11,7 @@ import {
   genericPowerOnly,
 } from '@ucdavis/tea/utility';
 import { Knex } from 'knex';
-import OSRM from 'osrm';
+import OSRM from '@project-osrm/osrm';
 import { TreatedCluster } from './models/treatedcluster';
 import { LCAresults, LCATotals, RequestByDistanceParams, YearlyResult } from './models/types';
 import { runFrcsOnCluster } from './runFrcs';
