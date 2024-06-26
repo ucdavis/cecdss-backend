@@ -17,7 +17,7 @@
   "dependencies": {
     "@project-osrm/osrm": "^5.27.1",
     "@types/cors": "^2.8.17",
-    "@ucdavis/frcs": "^2.0.0",
+    "@ucdavis/frcs": "1.2.9",
     "@ucdavis/lca": "^1.6.8",
     "@ucdavis/tea": "^1.4.3",
     "applicationinsights": "^3.1.0",
