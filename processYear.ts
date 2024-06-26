@@ -13,7 +13,7 @@ import {
 import fs from 'fs';
 import { getBoundsOfDistance, getDistance } from 'geolib';
 import { Knex } from 'knex';
-import OSRM from 'osrm';
+import OSRM from '@project-osrm/osrm';
 import { performance } from 'perf_hooks';
 import { getEquipmentPrice } from './equipment';
 import { trackMetric } from './logging';
