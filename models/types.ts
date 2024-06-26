@@ -14,7 +14,7 @@ import {
   OutputModGP,
   OutputModGPO,
 } from '@ucdavis/tea/output.model';
-import OSRM from 'osrm';
+import OSRM from '@project-osrm/osrm';
 
 export interface RequestParams {
   facilityLat: number;

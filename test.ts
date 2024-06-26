@@ -1,7 +1,7 @@
 // import { OutputModCHP, OutputModGP, OutputModGPO } from '@ucdavis/tea/out/models/output.model';
 // import dotenv from 'dotenv';
 // import knex from 'knex';
-// import OSRM from 'osrm';
+// import OSRM from '@project-osrm/osrm';
 // import { RequestParamsTest, RequestParamsTestYears, YearlyResultTest } from './models/types';
 // import { getTeaOutputs, processClustersForYear } from './processYear';
 

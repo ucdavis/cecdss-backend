@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import _fetch from 'isomorphic-fetch';
 import knex from 'knex';
-import OSRM from 'osrm';
+import OSRM from '@project-osrm/osrm';
 import pg from 'pg';
 
 import { RequestByDistanceParams } from 'models/types';
