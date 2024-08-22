@@ -259,7 +259,7 @@ export const processClustersForYear = async (
         system: params.system,
         moveInDistance: (moveInDistance / 1000) * KM_TO_MILES,
         dieselFuelPrice: params.dieselFuelPrice,
-        isBiomassSalvage: params.treatmentid === 10 ? true : false, // true if treatment is biomass salvage
+        isBiomassSalvage: false, // true if treatment is biomass Salvage but we have no option for biomass salvage with C-BREC data
         wageFaller: params.wageFaller,
         wageOther: params.wageOther,
         laborBenefits: params.laborBenefits,
@@ -379,7 +379,7 @@ const getClusters = async (
       .table('treatedclusters')
       .where({ treatmentid: params.treatmentid })
       .where({ year: 2016 }) // TODO: filter by actual year if we get data for multiple years
-      .whereIn('land_use', ['private', 'USDA Forest Service'])
+      .whereIn('land_use', ['private', 'United States Forest Service'])
       .whereNotIn('cluster_no', [...usedIds, ...errorIds, ...candidateIds])
       .whereBetween('center_lat', [bounds[0].latitude, bounds[1].latitude])
       .andWhereBetween('center_lng', [bounds[0].longitude, bounds[1].longitude]);

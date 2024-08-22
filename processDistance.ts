@@ -158,7 +158,7 @@ export const processClustersByDistance = async (
         system: params.system,
         moveInDistance: (moveInDistance / 1000) * KM_TO_MILES,
         dieselFuelPrice: params.dieselFuelPrice,
-        isBiomassSalvage: params.treatmentid === 10 ? true : false, // true if treatment is biomass salvage
+        isBiomassSalvage: false, // true if treatment is biomass Salvage but we have no option for biomass salvage with C-BREC data
         wageFaller: params.wageFaller,
         wageOther: params.wageOther,
         laborBenefits: params.laborBenefits,
@@ -257,7 +257,7 @@ const getClusters = async (
       .table('treatedclusters')
       .where({ treatmentid: params.treatmentid })
       .where({ year: 2016 }) // TODO: filter by actual year if we get data for multiple years
-      .whereIn('land_use', ['private', 'USDA Forest Service'])
+      .whereIn('land_use', ['private', 'United States Forest Service'])
       .andWhereRaw(
         `ST_DistanceSphere(ST_MakePoint(${params.facilityLng},${params.facilityLat}), ST_MakePoint(center_lng,center_lat)) > ${minRadiusInMeters}`
       )
@@ -364,6 +364,8 @@ const selectClusters = async (
         results.clusterNumbers.push(cluster.cluster_no);
         usedIds.push(cluster.cluster_no);
       } catch (err: any) {
+          // Log error message
+        console.log(`Error processing cluster ${cluster.cluster_no}: ${err.message}`);
         // swallow errors frcs throws and push the error message instead
         results.errorClusters.push({
           cluster_no: cluster.cluster_no,
