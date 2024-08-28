@@ -31,6 +31,7 @@ import { getTeaOutputs, processClustersForYear, runLca } from './processYear';
 import { testRunFrcsOnCluster } from './runFrcs';
 import { getMoveInTrip, getTransportationCostTotal, KM_TO_MILES } from './transportation';
 import { hookupKnexTiming } from './util';
+import saveModels from './saveModels';
 
 // tslint:disable-next-line: no-var-requires
 const swaggerDocument = require('./swagger.json');
@@ -53,7 +54,7 @@ const port = process.env.PORT || 3000;
 
 console.log('connecting to db', process.env.DB_HOST);
 // https://knexjs.org/
-const db = knex({
+export const db = knex({
   client: 'pg',
   debug: false,
   connection: {
@@ -85,6 +86,8 @@ app.use((req, res, next) => {
 
   next();
 });
+
+app.use(saveModels);
 
 // constants
 const systems = [
