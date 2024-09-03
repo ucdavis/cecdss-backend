@@ -12,6 +12,7 @@ import OSRM from '@project-osrm/osrm';
 import { performance } from 'perf_hooks';
 import pg from 'pg';
 import swaggerUi from 'swagger-ui-express';
+import saveModels from './saveModels'
 
 import { getFrcsInputsTest } from './frcsInputCalculations';
 import { setupAppInsights, trackMetric } from './logging';
@@ -53,7 +54,7 @@ const port = process.env.PORT || 3000;
 
 console.log('connecting to db', process.env.DB_HOST);
 // https://knexjs.org/
-const db = knex({
+export const db = knex({
   client: 'pg',
   debug: false,
   connection: {
@@ -85,6 +86,12 @@ app.use((req, res, next) => {
 
   next();
 });
+
+/**
+ * Router module to handle saving and retrieving model URLs.
+ * @module saveModels
+ */
+app.use(saveModels);
 
 // constants
 const systems = [

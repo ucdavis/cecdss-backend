@@ -251,3 +251,10 @@ export interface TreatedClustersInfo {
   cluster_no: string;
   geography: JSON;
 }
+
+export interface RequestShortenUrl {
+  allYearInputsStr: string;
+  biomassCoordinatesStr: string;
+  frcsInputsStr: string;
+  transportInputsStr: string;
+}
