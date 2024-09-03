@@ -64,7 +64,7 @@ const db = knex({
     port: Number(process.env.DB_PORT),
   },
 });
-console.log(process.env.DB_PASS)
+
 // reports query time for every db query
 hookupKnexTiming(db);
 
