@@ -212,7 +212,7 @@ export interface ClusterResult {
   landing_distance: number;
   county: string;
   land_use: string;
-  site_class: number;
+  site_class: string;
   forest_type: string;
   haz_class: number;
 }

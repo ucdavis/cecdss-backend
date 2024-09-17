@@ -10,7 +10,7 @@ import _fetch from 'isomorphic-fetch';
 import knex from 'knex';
 import OSRM from '@project-osrm/osrm';
 import { performance } from 'perf_hooks';
-import pg from 'pg';
+import pg, { Connection } from 'pg';
 import swaggerUi from 'swagger-ui-express';
 
 import { getFrcsInputsTest } from './frcsInputCalculations';
@@ -68,7 +68,10 @@ const db = knex({
 // reports query time for every db query
 hookupKnexTiming(db);
 
-console.log('connected to db. connected to osrm...');
+//const test = db.table('treatedclusters')
+//console.log(test)
+
+console.log('connected to db. connecting to osrm...');
 
 const osrm = new OSRM('./data/california-latest.osrm');
 console.log('connected to osrm');
@@ -219,10 +222,10 @@ app.post('/process', async (req, res) => {
 
     trackMetric(`Process method ${params.year} - biomass target ${params.biomassTarget}`, t1 - t0);
 
-    res.status(200).json(yearResult);
+    return res.status(200).json(yearResult);
   } catch (error) {
     console.log(error);
-    res.status(500).send(error);
+    return res.status(500).send(error);
   }
 });
 
