@@ -187,6 +187,8 @@ export const processClustersByDistance = async (
         equipment: 0,
       };
 
+      console.log('LCA TOTALS', lcaTotals, params.annualGeneration);
+
       const lca = await runLca(lcaInputs);
       results.lcaResults = lca;
 
