@@ -77,11 +77,13 @@ router.post(
       aboutMe,
     } = req.body;
 
+    console.log('HELLO')
+
     try {
-      const existingUser = await db('public.users').select('id').where({ email }).first();
+      const existingUser = await db('public.user_details').select('id').where({ email }).first();
 
       if (existingUser) {
-        await db('public.users').where({ id: existingUser.id }).update({
+        await db('public.user_details').where({ id: existingUser.id }).update({
           full_name: fullName,
           organization,
           org_type: orgType,
@@ -90,14 +92,13 @@ router.post(
           linkedin,
           expertise,
           about_me: aboutMe,
-          updated_at: db.fn.now(),
         });
 
         res
           .status(200)
           .json({ message: 'User details updated successfully', userId: existingUser.id });
       } else {
-        const [newUser] = await db('public.users')
+        const [newUser] = await db('public.user_details')
           .insert({
             full_name: fullName,
             email,
