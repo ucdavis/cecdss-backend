@@ -77,8 +77,6 @@ router.post(
       aboutMe,
     } = req.body;
 
-    console.log('HELLO')
-
     try {
       const existingUser = await db('public.user_details').select('id').where({ email }).first();
 
