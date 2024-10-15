@@ -1,103 +1,55 @@
 /**
- * Express router module to handle URL shortening and retrieval of associated data.
+ * Express router module for handling URL shortening and retrieval of saved models.
  * @module saveModels
  */
 
 import dotenv from 'dotenv';
-import { NextFunction, Request, Response, Router } from 'express';
+import { Request, Response, Router } from 'express';
 import { body, param, validationResult } from 'express-validator';
 import { db } from './index';
 import shortid from 'shortid';
 
 dotenv.config();
 
-/**
- * Express router instance.
- * @type {Router}
- */
 const router = Router();
 
 /**
- * Middleware to handle validation errors from express-validator.
- *
- * @param {Request} req - Express request object.
- * @param {Response} res - Express response object.
- * @param {NextFunction} next - Express next middleware function.
- * @returns {void}
- */
-const handleValidationErrors = (req: Request, res: Response, next: NextFunction): void => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    res.status(400).json({ errors: errors.array() });
-  }
-  next();
-};
-
-/**
- * Generates a short URL ID.
- *
- * @returns {string} - A short URL ID no longer than 10 characters.
- */
-const generateShortUrl = () => {
-  let id = shortid.generate();
-  while (id.length > 10) {
-    id = shortid.generate();
-  }
-  return id;
-};
-
-/**
  * POST /shorten-url
- * Endpoint to create a shortened URL based on input data.
+ * Creates a shortened URL for the provided data.
  *
- * @name /shorten-url
- * @function
- * @memberof module:urlRouter
- * @param {string} allYearInputsStr - JSON string containing year input data.
- * @param {string} biomassCoordinatesStr - JSON string containing biomass coordinates.
- * @param {string} frcsInputsStr - JSON string containing FRCS input data.
- * @param {string} transportInputsStr - JSON string containing transport input data.
- * @returns {Object} - JSON object containing the shortened URL.
+ * @route POST /shorten-url
+ * @param {Object} req.body.data - The data to be associated with the shortened URL.
+ * @returns {Object} JSON object containing the shortened URL.
+ * @throws {400} If the request body is invalid.
+ * @throws {500} If there's an internal server error.
  */
 router.post(
   '/shorten-url',
-  [
-    body('allYearInputsStr').notEmpty().withMessage('allYearInputsStr cannot be empty'),
-    body('biomassCoordinatesStr').notEmpty().withMessage('biomassCoordinatesStr cannot be empty'),
-    body('frcsInputsStr').notEmpty().withMessage('frcsInputsStr cannot be empty'),
-    body('transportInputsStr').notEmpty().withMessage('transportInputsStr cannot be empty'),
-  ],
-  handleValidationErrors,
-  async (req: Request, res: Response): Promise<void> => {
-    const { allYearInputsStr, biomassCoordinatesStr, frcsInputsStr, transportInputsStr } = req.body;
+  [body('data').isObject().notEmpty()],
+  async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { data } = req.body;
 
     try {
-      const existingUrl = await db('public.url')
-        .select('short_url')
-        .where({
-          all_year_inputs: allYearInputsStr,
-          biomass_coordinates: biomassCoordinatesStr,
-          frcs_inputs: frcsInputsStr,
-          transport_inputs: transportInputsStr,
-        })
-        .first();
+      const existingUrl = await db('public.url').select('short_url').where({ data }).first();
 
       if (existingUrl) {
-        res.status(200).json({ shortUrl: existingUrl.short_url });
-      } else {
-        const shortUrlId = generateShortUrl();
-        const shortUrl = `${process.env.FE_APP_URL}/${shortUrlId}`;
-
-        await db('public.url').insert({
-          all_year_inputs: allYearInputsStr,
-          biomass_coordinates: biomassCoordinatesStr,
-          frcs_inputs: frcsInputsStr,
-          transport_inputs: transportInputsStr,
-          short_url: shortUrl,
-        });
-
-        res.status(200).json({ shortUrl });
+        return res.status(200).json({ shortUrl: existingUrl.short_url });
       }
+
+      const shortUrlId = shortid.generate();
+      const shortUrl = `${process.env.FE_APP_URL}/${shortUrlId}`;
+
+      await db('public.url').insert({
+        data,
+        short_url: shortUrl,
+      });
+
+      res.status(200).json({ shortUrl });
     } catch (error) {
       console.error('Error inserting URL:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -107,34 +59,34 @@ router.post(
 
 /**
  * GET /saved-model/:modelId
- * Endpoint to retrieve original input data based on a shortened URL.
+ * Retrieves the data associated with a given model ID.
  *
- * @name /saved-model/:modelId
- * @function
- * @memberof module:urlRouter
- * @param {string} modelId - The ID of the short URL.
- * @returns {Object} - JSON object containing the original input data.
+ * @route GET /saved-model/:modelId
+ * @param {string} req.params.modelId - The ID of the model to retrieve.
+ * @returns {Object} JSON object containing the saved model data.
+ * @throws {400} If the model ID is invalid.
+ * @throws {404} If the model is not found.
+ * @throws {500} If there's an internal server error.
  */
 router.get(
   '/saved-model/:modelId',
   [param('modelId').isLength({ min: 1 }).withMessage('Invalid short URL ID')],
-  handleValidationErrors,
-  async (req: Request, res: Response): Promise<void> => {
+  async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     const { modelId } = req.params;
 
     try {
       const result = await db('public.url')
-        .select(['all_year_inputs', 'biomass_coordinates', 'frcs_inputs', 'transport_inputs'])
+        .select('data')
         .where('short_url', `${process.env.FE_APP_URL}/${modelId}`)
         .first();
 
       if (result) {
-        res.status(200).json({
-          allYearInputs: result.all_year_inputs,
-          biomassCoordinates: result.biomass_coordinates,
-          frcsInputs: result.frcs_inputs,
-          transportInputs: result.transport_inputs,
-        });
+        res.status(200).json(result.data);
       } else {
         res.status(404).json({ error: 'URL not found' });
       }
