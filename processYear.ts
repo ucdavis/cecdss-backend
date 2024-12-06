@@ -35,6 +35,7 @@ import {
   KM_TO_MILES,
   TRUCK_OWNERSHIP_COST,
 } from './transportation';
+import { isError } from 'util';
 
 const unloadingTime = 0.25; // assume the self-unloading process takes 15 minutes (0.25 h)
 const unloadingDieselUsageRate = 2; // assume fuel consumption rate is 2 gal/h
@@ -378,7 +379,7 @@ const getClusters = async (
     const clusters: ProcessedTreatedCluster[] = await db
       .table('treatedclusters')
       .where({ treatmentid: params.treatmentid })
-      .where({ year: 2016 }) // TODO: filter by actual year if we get data for multiple years
+      .where({ year: 2025 }) // TODO: filter by actual year if we get data for multiple years
       .whereIn('land_use', ['private', 'United States Forest Service'])
       .whereNotIn('cluster_no', [...usedIds, ...errorIds, ...candidateIds])
       .whereBetween('center_lat', [bounds[0].latitude, bounds[1].latitude])
@@ -453,13 +454,13 @@ const processCluster = async (
       params.residueRecovFracCTL
     );
 
+
     const clusterFeedstock = frcsResult.residual.yieldPerAcre * cluster.area; // green tons
     const clusterCoproduct =
       (frcsResult.total.yieldPerAcre - frcsResult.residual.yieldPerAcre) * cluster.area; // green tons
     if (clusterFeedstock === 0) {
       throw new Error(`Cluster feedstock was: ${clusterFeedstock}`);
     }
-
     const routeOptions: OSRM.RouteOptions = {
       coordinates: [
         [params.facilityLng, params.facilityLat],
@@ -467,8 +468,9 @@ const processCluster = async (
       ],
       annotations: ['duration', 'distance'],
     };
-    // currently distance is the osrm generated distance between each landing site and the facility location
+     // currently distance is the osrm generated distance between each landing site and the facility location
     const route: any = await getRouteDistanceAndDuration(osrm, routeOptions);
+    
     // number of trips is how many truckloads it takes to transport biomass
     const numberOfTripsForTransportation = Math.ceil(clusterFeedstock / FULL_TRUCK_PAYLOAD);
     // multiply the osrm road distance by number of trips, transportation eq doubles it for round trip
