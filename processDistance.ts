@@ -256,7 +256,7 @@ const getClusters = async (
     const clusters: TreatedCluster[] = await db
       .table('treatedclusters')
       .where({ treatmentid: params.treatmentid })
-      .where({ year: 2016 }) // TODO: filter by actual year if we get data for multiple years
+      .where({ year: 2025 }) // TODO: filter by actual year if we get data for multiple years
       .whereIn('land_use', ['private', 'United States Forest Service'])
       .andWhereRaw(
         `ST_DistanceSphere(ST_MakePoint(${params.facilityLng},${params.facilityLat}), ST_MakePoint(center_lng,center_lat)) > ${minRadiusInMeters}`
@@ -364,7 +364,6 @@ const selectClusters = async (
         results.clusterNumbers.push(cluster.cluster_no);
         usedIds.push(cluster.cluster_no);
       } catch (err: any) {
-          // Log error message
         console.log(`Error processing cluster ${cluster.cluster_no}: ${err.message}`);
         // swallow errors frcs throws and push the error message instead
         results.errorClusters.push({

@@ -12,7 +12,8 @@ import OSRM from '@project-osrm/osrm';
 import { performance } from 'perf_hooks';
 import pg, { Connection } from 'pg';
 import swaggerUi from 'swagger-ui-express';
-import saveModels from './saveModels'
+import saveModels from './saveModels';
+import saveUserDetails from './saveUserDetails';
 
 import { getFrcsInputsTest } from './frcsInputCalculations';
 import { setupAppInsights, trackMetric } from './logging';
@@ -95,6 +96,12 @@ app.use((req, res, next) => {
  * @module saveModels
  */
 app.use(saveModels);
+
+/**
+ * Router module to handle user details saving and updating.
+ * @module saveUserDetails
+ */
+app.use(saveUserDetails);
 
 // constants
 const systems = [
