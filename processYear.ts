@@ -176,7 +176,7 @@ export const processClustersForYear = async (
             results.candidateTotalFeedstock < extraBiomassTarget
           } ...`
         );
-
+        
         // get the clusters within the radius from the database, excluding used and error cluters
         const clusters: ProcessedTreatedCluster[] = await getClusters(
           db,
@@ -378,7 +378,7 @@ const getClusters = async (
     const clusters: ProcessedTreatedCluster[] = await db
       .table('treatedclusters')
       .where({ treatmentid: params.treatmentid })
-      .where({ year: 2016 }) // TODO: filter by actual year if we get data for multiple years
+      .where({ year: 2025 }) // TODO: filter by actual year if we get data for multiple years
       .whereIn('land_use', ['private', 'United States Forest Service'])
       .whereNotIn('cluster_no', [...usedIds, ...errorIds, ...candidateIds])
       .whereBetween('center_lat', [bounds[0].latitude, bounds[1].latitude])
@@ -453,9 +453,16 @@ const processCluster = async (
       params.residueRecovFracCTL
     );
 
+
     const clusterFeedstock = frcsResult.residual.yieldPerAcre * cluster.area; // green tons
+
+    if (typeof clusterFeedstock !== 'number' || isNaN(clusterFeedstock)) {
+      throw new Error(`Invalid feedstock calculation: ${clusterFeedstock}`);
+    }
+
     const clusterCoproduct =
       (frcsResult.total.yieldPerAcre - frcsResult.residual.yieldPerAcre) * cluster.area; // green tons
+
     if (clusterFeedstock === 0) {
       throw new Error(`Cluster feedstock was: ${clusterFeedstock}`);
     }
@@ -522,6 +529,7 @@ const selectClusters = async (
   usedIds: string[]
 ) => {
   return new Promise<void>(async (res, rej) => {
+
     for (const cluster of sortedClusters) {
       if (results.totalFeedstock >= biomassTarget) {
         // results.skippedClusters.push(cluster); // keeping for testing for now

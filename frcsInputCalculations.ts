@@ -202,18 +202,18 @@ export const getFrcsInputsTest = (
 
 // https://ucdavis.app.box.com/file/566320916282
 const calcBoleWeightCT = (cluster: TreatedCluster) => {
-  return 2000 * (cluster.Stem4to6_tonsAcre + cluster.Stem6to9_tonsAcre);
+  return 2000 * (cluster.stem4to6_tonsacre + cluster.stem6to9_tonsacre);
 };
 
 const calcResidueWeightCT = (cluster: TreatedCluster) => {
-  return 2000 * (cluster.Branch_tonsAcre);
+  return 2000 * (cluster.branch_tonsacre);
 };
 
 const density_conversion = 0.06242796; //convert from kg/m^3 to lb/ft^3
 
 const calcVolumeCT = (cluster: TreatedCluster) => {
   // vol variables are in cubic feet / acre
-  return (2000 * (cluster.Stem4to6_tonsAcre + cluster.Stem6to9_tonsAcre) + 2000 * (cluster.Branch_tonsAcre))/(cluster.wood_density*density_conversion);
+  return (2000 * (cluster.stem4to6_tonsacre + cluster.stem6to9_tonsacre) + 2000 * (cluster.branch_tonsacre))/(cluster.wood_density*density_conversion);
 };
 
 const mass_per_4to6_tree = KG_to_UStons*Math.exp(-3.6295 + 2.7174 * Math.log(5*IN_to_CM)); // average mass per 4 to 6" DBH tree assuming an average DBH of 5"
@@ -221,7 +221,7 @@ const mass_per_6to9_tree = KG_to_UStons*Math.exp(-3.6295 + 2.7174 * Math.log(7.5
 
 const calcRemovalsCT = (cluster: TreatedCluster) => {
   // tpa and sng variables are in trees / acre .... (tons / acre)/(tons / 4 to 9" tree)
-  return ((cluster.Stem4to6_tonsAcre)/ mass_per_4to6_tree) + ((cluster.Stem6to9_tonsAcre)/ mass_per_6to9_tree) ; //it is important not to include "2000*" here because it should be in tons not pounds
+  return ((cluster.stem4to6_tonsacre)/ mass_per_4to6_tree) + ((cluster.stem6to9_tonsacre)/ mass_per_6to9_tree) ; //it is important not to include "2000*" here because it should be in tons not pounds
 };
 
 //NOT USED ANYWHERE
@@ -231,7 +231,7 @@ const calcTotalRemovalsCT = (cluster: TreatedCluster) => {
 
 const calcBoleWeightSLT = (cluster: TreatedCluster) => {
   return (
-     2000 *(cluster.Stem9Plus_tonsAcre) // U.S. tons
+     2000 *(cluster.stem9plus_tonsacre) // U.S. tons
   );
 };
 
@@ -240,14 +240,14 @@ const calcResidueWeightSLT = (cluster: TreatedCluster) => {
 };
 
 const calcVolumeSLT = (cluster: TreatedCluster) => {
-  return (2000 *(cluster.Stem9Plus_tonsAcre))/(cluster.wood_density*density_conversion);
+  return (2000 *(cluster.stem9plus_tonsacre))/(cluster.wood_density*density_conversion);
   // return calculateVolume(cluster, 15);
 };
 
 const mass_per_9plus_tree = KG_to_UStons*(0.0675 * (12*IN_to_CM)**2.245); // average mass per 9+" DBH tree assuming an average DBH of 12"
 
 const calcRemovalsSLT = (cluster: TreatedCluster) => {
-  return (cluster.Stem9Plus_tonsAcre) / mass_per_9plus_tree; //it is important not to include "2000*" here because it should be in tons not pounds
+  return (cluster.stem9plus_tonsacre) / mass_per_9plus_tree; //it is important not to include "2000*" here because it should be in tons not pounds
 };
 
 //NOT USED ANYWHERE
