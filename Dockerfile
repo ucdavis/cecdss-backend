@@ -11,6 +11,7 @@ RUN curl -O https://download.geofabrik.de/north-america/us/california-latest.osm
 WORKDIR /app
 RUN node_modules/@project-osrm/osrm/lib/binding/osrm-extract data/california-latest.osm.pbf -p forestry.lua
 RUN node_modules/@project-osrm/osrm/lib/binding/osrm-contract data/california-latest
+RUN rm data/california-latest.osm.pbf
 
 # Stage 2: Build and run application
 FROM --platform=linux/amd64 node:18-slim
