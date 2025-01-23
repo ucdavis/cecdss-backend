@@ -1,5 +1,5 @@
 # Stage 1: Process OSRM data
-FROM --platform=linux/amd64 node:18-slim AS osrm-processor
+FROM node:18-slim AS osrm-processor
 WORKDIR /app
 COPY package*.json ./
 COPY forestry.lua ./
@@ -14,7 +14,7 @@ RUN node_modules/@project-osrm/osrm/lib/binding/osrm-contract data/california-la
 RUN rm data/california-latest.osm.pbf
 
 # Stage 2: Build and run application
-FROM --platform=linux/amd64 node:18-slim
+FROM node:18-slim
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
