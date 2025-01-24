@@ -3,7 +3,7 @@ FROM node:18-slim AS osrm-processor
 WORKDIR /app
 COPY package*.json ./
 COPY forestry.lua ./
-RUN npm ci
+RUN npm install
 RUN apt-get update && apt-get install -y curl
 RUN mkdir -p data
 WORKDIR /app/data
