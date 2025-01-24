@@ -4,7 +4,15 @@ WORKDIR /app
 COPY package*.json ./
 COPY forestry.lua ./
 RUN npm install
-RUN apt-get update && apt-get install -y curl lua5.2
+RUN apt-get update && apt-get install -y \
+    curl \
+    lua5.4 \
+    liblua5.4-dev \
+    libboost-all-dev \
+    libtbb-dev \
+    build-essential \
+    pkg-config \
+    cmake
 RUN mkdir -p data
 WORKDIR /app/data
 RUN curl -O https://download.geofabrik.de/north-america/us/california-latest.osm.pbf
