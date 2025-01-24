@@ -2,22 +2,14 @@
 FROM node:18-slim AS osrm-processor
 WORKDIR /app
 COPY package*.json ./
-COPY forestry.lua ./
-RUN npm install
-RUN apt-get update && apt-get install -y \
-    curl \
-    lua5.4 \
-    liblua5.4-dev \
-    libboost-all-dev \
-    libtbb-dev \
-    build-essential \
-    pkg-config \
-    cmake
+RUN npm ci
+RUN apt-get update && apt-get install -y curl
+COPY forestry.lua node_modules/@project-osrm/osrm/profiles/
 RUN mkdir -p data
 WORKDIR /app/data
 RUN curl -O https://download.geofabrik.de/north-america/us/california-latest.osm.pbf
 WORKDIR /app
-RUN node_modules/@project-osrm/osrm/lib/binding/osrm-extract data/california-latest.osm.pbf -p forestry.lua
+RUN node_modules/@project-osrm/osrm/lib/binding/osrm-extract data/california-latest.osm.pbf -p node_modules/@project-osrm/osrm/profiles/forestry.lua
 RUN node_modules/@project-osrm/osrm/lib/binding/osrm-contract data/california-latest
 RUN rm data/california-latest.osm.pbf
 
