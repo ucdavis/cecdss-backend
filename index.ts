@@ -12,8 +12,8 @@ import OSRM from '@project-osrm/osrm';
 import { performance } from 'perf_hooks';
 import pg, { Connection } from 'pg';
 import swaggerUi from 'swagger-ui-express';
-import saveModels from './saveModels'
-import saveUserDetails from './saveUserDetails'
+import saveModels from './saveModels';
+import saveUserDetails from './saveUserDetails';
 
 import { getFrcsInputsTest } from './frcsInputCalculations';
 import { setupAppInsights, trackMetric } from './logging';
@@ -75,7 +75,7 @@ hookupKnexTiming(db);
 
 console.log('connected to db. connecting to osrm...');
 
-const osrm = new OSRM('./data/california-latest.osrm');
+const osrm = new OSRM(process.env.OSRM_FILE || './data/california-latest.osrm');
 console.log('connected to osrm');
 
 // allow cors
