@@ -64,6 +64,7 @@ export const db = knex({
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
     port: Number(process.env.DB_PORT),
+    ssl: process.env.DB_SSL ? { rejectUnauthorized: false } : false,
   },
 });
 
