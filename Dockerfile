@@ -20,7 +20,8 @@ COPY package*.json ./
 RUN npm ci
 COPY . .
 RUN npm run build
-COPY --from=osrm-processor /app/data ./data
+# Copy OSRM data from previous stage into newly created dist folder (where we run the app)
+COPY --from=osrm-processor /app/data ./dist/data
 
 EXPOSE 3000
 CMD ["npm", "start"]
