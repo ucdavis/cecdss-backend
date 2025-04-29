@@ -1,6 +1,30 @@
 import { getFrcsOutputs } from '@ucdavis/frcs';
 import { getFrcsInputs, getFrcsInputsTest } from './frcsInputCalculations';
 import { TreatedCluster } from './models/treatedcluster';
+import { FrcsOutputs } from '@ucdavis/frcs/out/model';
+
+export const sanitizeFrcsOutput = (frcsOutput: FrcsOutputs): FrcsOutputs => {
+  const sanitizeObject = (obj: any): any => {
+    const result: any = {};
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        if (typeof obj[key] === 'object' && obj[key] !== null) {
+          result[key] = sanitizeObject(obj[key]);
+        } else if (typeof obj[key] === 'number' && isNaN(obj[key])) {
+          result[key] = 0;
+        } else {
+          result[key] = obj[key];
+        }
+      }
+    }
+    return result;
+  };
+
+  return {
+    total: sanitizeObject(frcsOutput.total),
+    residual: sanitizeObject(frcsOutput.residual)
+  };
+};
 
 export const runFrcsOnCluster = async (
   cluster: TreatedCluster,
@@ -27,7 +51,9 @@ export const runFrcsOnCluster = async (
     residueRecovFracCTL
   );
   const clusterFrcsOutput = getFrcsOutputs(frcsInputs);
-  return clusterFrcsOutput;
+  const sanitizedOutput = sanitizeFrcsOutput(clusterFrcsOutput);
+  return sanitizedOutput;
+
 };
 
 export const testRunFrcsOnCluster = async (

@@ -133,9 +133,9 @@ export const processClustersByDistance = async (
         maxRadiusInMeters
       );
 
-      console.log(`year:${year} clusters found: ${clusters.length}`);
+      // console.log(`year:${year} clusters found: ${clusters.length}`);
 
-      console.log(`year:${year} selecting clusters...`);
+      // console.log(`year:${year} selecting clusters...`);
       await selectClusters(osrm, params, clusters, results, lcaTotals, [], []);
 
       let moveInDistance = 0;
@@ -167,7 +167,7 @@ export const processClustersByDistance = async (
         includeCostsCollectChipResidues: true,
       });
 
-      console.log(`move in cost: ${moveInOutputs.residualCost}`);
+      // console.log(`move in cost: ${moveInOutputs.residualCost}`);
 
       results.totalMoveInDistance = moveInDistance;
       results.totalMoveInCost = moveInOutputs.residualCost;
