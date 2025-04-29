@@ -187,12 +187,12 @@ export const processClustersForYear = async (
           results.radius,
           candidateIds
         );
-        // console.log(`year:${year} clusters found: ${clusters.length}`);
+        console.log(`year:${year} clusters found: ${clusters.length}`);
 
         // process clusters to compute feedstock amount, harvest cost, transport cost, etc.for each cluster
         // add harvestable clusters to harvestableClusters
         // add Id of non-harvestable clusters to errorIds
-        // console.log(`year:${year} processing clusters...`);
+        console.log(`year:${year} processing clusters...`);
         await processClusters(
           osrm,
           params,
@@ -204,7 +204,7 @@ export const processClustersForYear = async (
         );
       } // end of the while loop
 
-      // console.log(`year:${year} sorting candidate clusters by unit feedstock cost...`);
+      console.log(`year:${year} sorting candidate clusters by unit feedstock cost...`);
       const sortedClusters = harvestableClusters.sort(
         (a, b) =>
           (a.feedstockHarvestCost + a.transportationCost) / a.feedstock -
@@ -212,7 +212,7 @@ export const processClustersForYear = async (
       );
 
       // select from the sorted harvestable clusters the ones that can supply one-year feedstock (biomassTarget)
-      // console.log(`year:${year} selecting clusters...`);
+      console.log(`year:${year} selecting clusters...`);
       await selectClusters(biomassTarget, sortedClusters, results, lcaTotals, usedIds);
 
       // if (year === params.firstYear) {
@@ -268,7 +268,7 @@ export const processClustersForYear = async (
         includeCostsCollectChipResidues: true,
       });
 
-      // console.log(`move in cost: ${moveInOutputs.residualCost}`);
+      console.log(`move in cost: ${moveInOutputs.residualCost}`);
 
       results.totalMoveInDistance = moveInDistance;
       results.totalMoveInCost = moveInOutputs.residualCost;
@@ -321,8 +321,8 @@ export const processClustersForYear = async (
         results.harvestCostPerDryTon +
         results.transportationCostPerDryTon +
         results.moveInCostPerDryTon;
-      // console.log(`totalDryFeedstock (BDMT): ${results.totalDryFeedstock}`);
-      // console.log(`movein cost ($/BDMT): ${results.moveInCostPerDryTon}`);
+      console.log(`totalDryFeedstock (BDMT): ${results.totalDryFeedstock}`);
+      console.log(`movein cost ($/BDMT): ${results.moveInCostPerDryTon}`);
 
       /*** run TEA ***/
       const cashFlow: CashFlow = params.cashFlow;
