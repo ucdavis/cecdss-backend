@@ -173,7 +173,6 @@ app.post('/initialProcessing', async (req, res) => {
 
     const teaInputs: any = { ...params.teaInputs };
     teaInputs.CapitalCost += transmissionResults.AllCost;
-    // console.log(JSON.stringify(teaInputs));
     const teaOutput: OutputModGPO | OutputModCHP | OutputModGP = await getTeaOutputs(
       params.teaModel,
       teaInputs

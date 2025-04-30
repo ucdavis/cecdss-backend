@@ -176,7 +176,7 @@ export const processClustersForYear = async (
             results.candidateTotalFeedstock < extraBiomassTarget
           } ...`
         );
-        
+
         // get the clusters within the radius from the database, excluding used and error cluters
         const clusters: ProcessedTreatedCluster[] = await getClusters(
           db,
@@ -242,7 +242,7 @@ export const processClustersForYear = async (
       /*** move-in cost calculation ***/
       let moveInDistance = 0;
       if (results.totalFeedstock > 0) {
-        console.log('move in distance required, calculating');
+        console.log('move in distance required, calculating'); 
         moveInDistance = await calculateMoveInDistance(
           osrm,
           results,
@@ -425,7 +425,7 @@ const processClusters = async (
       `processClusters for ${clusters.length}. ${results.clusters.length} processed, ${results.errorClusters.length} errors`,
       t1 - t0
     );
-
+ 
     res();
   });
 };
@@ -439,6 +439,7 @@ const processCluster = async (
   errorIds: string[],
   candidateIds: string[]
 ) => {
+  
   try {
     const frcsResult: FrcsOutputs = await runFrcsOnCluster(
       cluster,
@@ -452,8 +453,6 @@ const processCluster = async (
       params.residueRecovFracWT,
       params.residueRecovFracCTL
     );
-
-
     const clusterFeedstock = frcsResult.residual.yieldPerAcre * cluster.area; // green tons
 
     if (typeof clusterFeedstock !== 'number' || isNaN(clusterFeedstock)) {
