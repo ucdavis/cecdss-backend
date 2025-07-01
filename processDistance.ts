@@ -270,8 +270,6 @@ const getClusters = async (
   });
 };
 
-// year:2037 clusters found: 2218
-
 const selectClusters = async (
   osrm: OSRM,
   params: RequestByDistanceParams,
