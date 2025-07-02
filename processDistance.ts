@@ -253,10 +253,12 @@ const getClusters = async (
   maxRadiusInMeters: number
 ): Promise<TreatedCluster[]> => {
   return new Promise(async (res, rej) => {
+    const dataYear = year <= 2029 ? 2025 : 2030;
+
     const clusters: TreatedCluster[] = await db
       .table('treatedclusters')
       .where({ treatmentid: params.treatmentid })
-      .where({ year: 2025 }) // TODO: filter by actual year if we get data for multiple years
+      .where({ year: dataYear })
       .whereIn('land_use', ['private', 'United States Forest Service'])
       .andWhereRaw(
         `ST_DistanceSphere(ST_MakePoint(${params.facilityLng},${params.facilityLat}), ST_MakePoint(center_lng,center_lat)) > ${minRadiusInMeters}`

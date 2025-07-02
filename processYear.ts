@@ -215,25 +215,6 @@ export const processClustersForYear = async (
       console.log(`year:${year} selecting clusters...`);
       await selectClusters(biomassTarget, sortedClusters, results, lcaTotals, usedIds);
 
-      // if (year === params.firstYear) {
-      //   // determine csv file name and only run if file does not already exist
-      //   let fileName = `${year}_test`;
-
-      //   // replace non-alphanumeric characters with underscores
-      //   fileName = fileName.replace(/[^a-z0-9]/gi, '_');
-
-      //   const fileWithDirectory = (process.env.CSV_DIR || './results/') + fileName + '.csv';
-
-      //   let fileContents = 'cluster_no,feedstockCost,feedstockAmount\n';
-      //   sortedClusters.slice(0, 100).forEach((c) => {
-      //     fileContents += `${c.cluster_no}, ${
-      //       (c.feedstockHarvestCost + c.transportationCost) / c.feedstock
-      //     },${c.feedstock}\n`;
-      //   });
-
-      //   fs.writeFileSync(fileWithDirectory, fileContents);
-      // }
-
       results.numberOfClusters = results.clusterNumbers.length;
       console.log(
         `annualGeneration: ${params.annualGeneration}, radius: ${results.radius}, # of clusters: ${results.numberOfClusters}`
@@ -375,10 +356,11 @@ const getClusters = async (
 ): Promise<ProcessedTreatedCluster[]> => {
   return new Promise(async (res, rej) => {
     const bounds = getBoundsOfDistance({ latitude: params.lat, longitude: params.lng }, radius);
+    const dataYear = year <= 2029 ? 2025 : 2030;
     const clusters: ProcessedTreatedCluster[] = await db
       .table('treatedclusters')
       .where({ treatmentid: params.treatmentid })
-      .where({ year: 2025 }) // TODO: filter by actual year if we get data for multiple years
+      .where({ year: dataYear })
       .whereIn('land_use', ['private', 'United States Forest Service'])
       .whereNotIn('cluster_no', [...usedIds, ...errorIds, ...candidateIds])
       .whereBetween('center_lat', [bounds[0].latitude, bounds[1].latitude])
