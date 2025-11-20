@@ -35,6 +35,13 @@ import {
   KM_TO_MILES,
   TRUCK_OWNERSHIP_COST,
 } from './transportation';
+import { MLTrainingClient } from './ml-training-client';
+
+const mlClient = new MLTrainingClient(
+  process.env.ENABLE_ML_TRAINING === 'true'
+);
+
+
 
 const unloadingTime = 0.25; // assume the self-unloading process takes 15 minutes (0.25 h)
 const unloadingDieselUsageRate = 2; // assume fuel consumption rate is 2 gal/h
@@ -187,12 +194,12 @@ export const processClustersForYear = async (
           results.radius,
           candidateIds
         );
-        console.log(`year:${year} clusters found: ${clusters.length}`);
+        // console.log(`year:${year} clusters found: ${clusters.length}`);
 
         // process clusters to compute feedstock amount, harvest cost, transport cost, etc.for each cluster
         // add harvestable clusters to harvestableClusters
         // add Id of non-harvestable clusters to errorIds
-        console.log(`year:${year} processing clusters...`);
+        // console.log(`year:${year} processing clusters...`);
         await processClusters(
           osrm,
           params,
@@ -202,9 +209,37 @@ export const processClustersForYear = async (
           harvestableClusters,
           candidateIds
         );
+                // ✅ NEW: Send snapshot to ML training service
+        if (process.env.ENABLE_ML_TRAINING === 'true' && harvestableClusters.length > 0) {
+          try {
+            console.log('MODEL TRAINING: Sending snapshot to ML training service...');
+            const snapshot = {
+              facility_lat: params.facilityLat!,
+              facility_lng: params.facilityLng!,
+              treatment_id: params.treatmentid,
+              system: params.system,
+              radius_km: results.radius / 1000,
+              
+              // Regional features
+              region_biomass_density: calculateBiomassDensity(harvestableClusters),
+              region_slope_avg: calculateAvgSlope(harvestableClusters),
+              region_elevation_avg: calculateAvgElevation(harvestableClusters),
+              
+              // Current results
+              clusters_available: harvestableClusters.length,
+              total_biomass: results.candidateTotalFeedstock,
+              avg_cost_per_ton: calculateAvgCost(harvestableClusters),
+              avg_distance_km: calculateAvgDistance(harvestableClusters, params)
+            };
+            
+            await mlClient.sendSnapshot(snapshot);
+          } catch (err: any) {
+            console.error(`ML training error: ${err.message}`);
+          }
+        }
       } // end of the while loop
 
-      console.log(`year:${year} sorting candidate clusters by unit feedstock cost...`);
+      // console.log(`year:${year} sorting candidate clusters by unit feedstock cost...`);
       const sortedClusters = harvestableClusters.sort(
         (a, b) =>
           (a.feedstockHarvestCost + a.transportationCost) / a.feedstock -
@@ -212,18 +247,18 @@ export const processClustersForYear = async (
       );
 
       // select from the sorted harvestable clusters the ones that can supply one-year feedstock (biomassTarget)
-      console.log(`year:${year} selecting clusters...`);
+      // console.log(`year:${year} selecting clusters...`);
       await selectClusters(biomassTarget, sortedClusters, results, lcaTotals, usedIds);
 
       results.numberOfClusters = results.clusterNumbers.length;
-      console.log(
-        `annualGeneration: ${params.annualGeneration}, radius: ${results.radius}, # of clusters: ${results.numberOfClusters}`
-      );
+      // console.log(
+      //   `annualGeneration: ${params.annualGeneration}, radius: ${results.radius}, # of clusters: ${results.numberOfClusters}`
+      // );
 
       /*** move-in cost calculation ***/
       let moveInDistance = 0;
       if (results.totalFeedstock > 0) {
-        console.log('move in distance required, calculating'); 
+        // console.log('move in distance required, calculating'); 
         moveInDistance = await calculateMoveInDistance(
           osrm,
           results,
@@ -283,9 +318,9 @@ export const processClustersForYear = async (
       };
 
       console.log('running LCA...');
-      console.log('lcaInputs = ', lcaInputs);
+      // console.log('lcaInputs = ', lcaInputs);
       const lca = await runLca(lcaInputs);
-      console.log('lifeCycleEmissions = ', lca.lifeCycleEmissions);
+      // console.log('lifeCycleEmissions = ', lca.lifeCycleEmissions);
       results.lcaResults = lca;
 
       // calculate dry values ($ / dry metric ton)
@@ -302,8 +337,8 @@ export const processClustersForYear = async (
         results.harvestCostPerDryTon +
         results.transportationCostPerDryTon +
         results.moveInCostPerDryTon;
-      console.log(`totalDryFeedstock (BDMT): ${results.totalDryFeedstock}`);
-      console.log(`movein cost ($/BDMT): ${results.moveInCostPerDryTon}`);
+      // console.log(`totalDryFeedstock (BDMT): ${results.totalDryFeedstock}`);
+      // console.log(`movein cost ($/BDMT): ${results.moveInCostPerDryTon}`);
 
       /*** run TEA ***/
       const cashFlow: CashFlow = params.cashFlow;
@@ -665,3 +700,41 @@ const getErrorGeoJson = async (
   });
   // tslint:disable-next-line: max-file-line-count
 };
+
+function calculateBiomassDensity(clusters: ProcessedTreatedCluster[]): number {
+  if (clusters.length === 0) return 0;
+  const totalBiomass = clusters.reduce((sum, c) => sum + (c.feedstock || 0), 0);
+  const totalArea = clusters.reduce((sum, c) => sum + (c.area || 0), 0);
+  return totalArea > 0 ? totalBiomass / totalArea : 0;
+}
+
+function calculateAvgSlope(clusters: ProcessedTreatedCluster[]): number {
+  if (clusters.length === 0) return 0;
+  return clusters.reduce((sum, c) => sum + (c.slope || 0), 0) / clusters.length;
+}
+
+function calculateAvgElevation(clusters: ProcessedTreatedCluster[]): number {
+  if (clusters.length === 0) return 0;
+  return clusters.reduce((sum, c) => sum + (c.center_elevation || 0), 0) / clusters.length;
+}
+
+function calculateAvgCost(clusters: ProcessedTreatedCluster[]): number {
+  if (clusters.length === 0) return 0;
+  let totalCost = 0;
+  let totalBiomass = 0;
+  
+  for (const c of clusters) {
+    if (c.feedstock && c.feedstock > 0) {
+      const clusterCost = (c.feedstockHarvestCost || 0) + (c.transportationCost || 0);
+      totalCost += clusterCost;
+      totalBiomass += c.feedstock;
+    }
+  }
+  
+  return totalBiomass > 0 ? totalCost / totalBiomass : 0;
+}
+
+function calculateAvgDistance(clusters: ProcessedTreatedCluster[], params: RequestParams): number {
+  if (clusters.length === 0) return 0;
+  return clusters.reduce((sum, c) => sum + (c.distance || 0), 0) / clusters.length;
+}

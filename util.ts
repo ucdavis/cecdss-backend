@@ -51,9 +51,9 @@ const printQueryWithTime = (uid: string) => {
   // the bindings for the queries.
 
   // if you want to see the real values of the variables, you uncomment the following line and remove the second line
-     console.log(query.sql, ',', `[${query.bindings ? query.bindings.join(',') : ''}]`);
+  // console.log(query.sql, ',', `[${query.bindings ? query.bindings.join(',') : ''}]`);
   //console.log(query.sql);
-  console.log(`Time: ${elapsedTime.toFixed(3)} ms\n`);
+  console.log(`Query Time: ${elapsedTime.toFixed(3)} ms\n`);
 
   // After I print out the query, I have no more use to it,
   // so I delete it from my map so it doesn't grow out of control.
