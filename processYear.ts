@@ -357,14 +357,24 @@ const getClusters = async (
   return new Promise(async (res, rej) => {
     const bounds = getBoundsOfDistance({ latitude: params.lat, longitude: params.lng }, radius);
     const dataYear = year <= 2029 ? 2025 : 2030;
+
+    // define vars in one place to make it easy
+    const landUses = ['private', 'United States Forest Service'] as const;
+
+    const minLat = Math.min(bounds[0].latitude,  bounds[1].latitude);
+    const maxLat = Math.max(bounds[0].latitude,  bounds[1].latitude);
+    const minLng = Math.min(bounds[0].longitude, bounds[1].longitude);
+    const maxLng = Math.max(bounds[0].longitude, bounds[1].longitude);
+
+    const excludeIds = [...usedIds, ...errorIds, ...candidateIds];
+
     const clusters: ProcessedTreatedCluster[] = await db
       .table('treatedclusters')
-      .where({ treatmentid: params.treatmentid })
-      .where({ year: dataYear })
-      .whereIn('land_use', ['private', 'United States Forest Service'])
-      .whereNotIn('cluster_no', [...usedIds, ...errorIds, ...candidateIds])
-      .whereBetween('center_lat', [bounds[0].latitude, bounds[1].latitude])
-      .andWhereBetween('center_lng', [bounds[0].longitude, bounds[1].longitude]);
+      .where({ treatmentid: params.treatmentid, year: dataYear })
+      .whereIn('land_use', landUses as unknown as string[])
+      .whereBetween('center_lat', [minLat, maxLat])
+      .whereBetween('center_lng', [minLng, maxLng])
+      .whereRaw('NOT (cluster_no = ANY (?::varchar[]))', [excludeIds]); // switch to raw to make it easier on the pgsql planner
 
     // only include those clusters that are inside a circular radius
     const clustersInCircle = clusters.filter(
